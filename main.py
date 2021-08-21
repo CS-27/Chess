@@ -9,7 +9,7 @@ screen = pg.display.set_mode((800, 800))
 pg.display.set_caption("Chess")
 
 # Game State, takes FEN string
-Game_State = "p6r/p6p/8/8/1P6/8/8/8"
+Game_State = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 Game_State_Array = list(Game_State)
 
 fen_index_num = 0
@@ -96,7 +96,7 @@ def fen_index_of_click(): #deduction should be true if it's the end index
     clicked = pg.mouse.get_pressed()[0] # returns (bool, bool, bool). One for each mouse button. Indexing at 0
     x = int(pg.mouse.get_pos()[0] / 100) * 100  # round down to nearest hundreth
     y = int(pg.mouse.get_pos()[1] / 100) * 100
-    # 'rn3b1r/ppp3pp/5n2/8/1PP5/5p2/6QP/5B1R w KQkq - 0 1'
+    # 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
     for i in Game_State:
         if (x, y) == (fen_index_col, fen_index_row):
             break
@@ -140,7 +140,7 @@ def capture(start_index, end_index):
     global Game_State_Array
     temp1 = Game_State_Array[start_index]
     temp2 = Game_State_Array[end_index]
-    #'rn3b1r/ppp3pp/5n2/8/1PP5/5p2/6QP/5B1R w KQkq - 0 1'
+    #'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
     if Game_State_Array[end_index].isnumeric() and int(Game_State_Array[end_index]) > 1:
         count = 0
         for i in Game_State_Array[end_index-1:0:-1]: #for loop that moves back to the slash and checks if the len of that is equal to or greater than x
