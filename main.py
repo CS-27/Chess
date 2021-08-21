@@ -9,10 +9,10 @@ screen = pg.display.set_mode((800, 800))
 pg.display.set_caption("Chess")
 
 # Game State, takes FEN string
-Game_State = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+Game_State = "p6r/p6p/8/8/1P6/8/8/8"
 Game_State_Array = list(Game_State)
 
-fen_index_num = -1
+fen_index_num = 0
 fen_index_row = 0
 fen_index_col = 0
 clicked = False
@@ -79,6 +79,9 @@ def gamestate():
             count = 0
         elif i.isnumeric():
             count += int(i)
+        elif i == ' ':
+            break
+    return
 
 def fen_index_of_click(): #deduction should be true if it's the end index
     global clicked
@@ -89,15 +92,13 @@ def fen_index_of_click(): #deduction should be true if it's the end index
     global y
     fen_index_row = 0
     fen_index_col = 0
-    fen_index_num = -1
+    fen_index_num = 0
     clicked = pg.mouse.get_pressed()[0] # returns (bool, bool, bool). One for each mouse button. Indexing at 0
     x = int(pg.mouse.get_pos()[0] / 100) * 100  # round down to nearest hundreth
     y = int(pg.mouse.get_pos()[1] / 100) * 100
+    # 'rn3b1r/ppp3pp/5n2/8/1PP5/5p2/6QP/5B1R w KQkq - 0 1'
     for i in Game_State:
-        if (x, y) == (fen_index_col, fen_index_row) and i != '/':
-            fen_index_num += 1
-            break
-        if (x, y) == (fen_index_col, fen_index_row) and i == '/':
+        if (x, y) == (fen_index_col, fen_index_row):
             break
         if i == '/':
             fen_index_num += 1
@@ -107,16 +108,31 @@ def fen_index_of_click(): #deduction should be true if it's the end index
             fen_index_num += 1
             fen_index_col += 100
         elif i.isnumeric():
-            if (x, y) != (fen_index_col, fen_index_row):
-                fen_index_num += 1
+            count = 0
             for j in range(0, int(i)):
                 if (x, y) != (fen_index_col, fen_index_row):
                     fen_index_col += 100
-
-            #else:
-            #    if int(i) == 1:
-            #        fen_index_num += 1
+                    count += 1
+            if count == int(i):
+                fen_index_num += 1
     print(fen_index_num)
+    return
+
+def surrounding_index_numeric(start_index, end_index, i): #need to make this surrounding index not just prior
+    if end_index > start_index:
+        i = 0
+    if Game_State_Array[start_index + i - 1].isnumeric() and not Game_State_Array[start_index + i + 1].isnumeric():
+        Game_State_Array[start_index + i - 1] = str(int(Game_State_Array[start_index + i - 1]) + 1)
+        Game_State_Array.pop(start_index + i)
+    elif Game_State_Array[start_index + i + 1].isnumeric() and not Game_State_Array[start_index + i - 1].isnumeric():
+        Game_State_Array[start_index + i + 1] = str(int(Game_State_Array[start_index + i + 1]) + 1)
+        Game_State_Array.pop(start_index + i)
+    elif Game_State_Array[start_index + i - 1].isnumeric() and Game_State_Array[start_index + i + 1].isnumeric():
+        Game_State_Array[start_index + i - 1] = str(int(Game_State_Array[start_index + i - 1]) + 1 + int(Game_State_Array[start_index + i + 1]))
+        Game_State_Array.pop(start_index + i)
+        Game_State_Array.pop(start_index + i)
+    else:
+        Game_State_Array[start_index + i] = '1'
     return
 
 def capture(start_index, end_index):
@@ -124,7 +140,7 @@ def capture(start_index, end_index):
     global Game_State_Array
     temp1 = Game_State_Array[start_index]
     temp2 = Game_State_Array[end_index]
-
+    #'rn3b1r/ppp3pp/5n2/8/1PP5/5p2/6QP/5B1R w KQkq - 0 1'
     if Game_State_Array[end_index].isnumeric() and int(Game_State_Array[end_index]) > 1:
         count = 0
         for i in Game_State_Array[end_index-1:0:-1]: #for loop that moves back to the slash and checks if the len of that is equal to or greater than x
@@ -136,22 +152,70 @@ def capture(start_index, end_index):
             else:
                 break
         if count == int(x/100) and count != 0:
+            num = int(Game_State_Array[end_index])
             Game_State_Array[end_index] = temp1
-            Game_State_Array[start_index] = '1'
-        else: # if count != int(x/100), which suggests that theres number at end index and our x coord falls somewhere in the middle of that numbers blank squares
-            Game_State_Array[end_index] = str(int(x/100) - count)#str(int(Game_State_Array[end_index])-1)
-            Game_State_Array.insert(end_index + 1, temp1)
-            if int(x/100) != 7:
-                Game_State_Array.insert(end_index + 2, str(8 - int(x/100) - 1))
-            if start_index > end_index and int(x/100) != 7:
-                Game_State_Array[start_index + 2] = '1'
-            elif start_index > end_index:
-                Game_State_Array[start_index + 1] = '1'
-            elif end_index > start_index:
-                Game_State_Array[start_index] = '1'
+            Game_State_Array.insert(end_index + 1, str(num - 1))
+            surrounding_index_numeric(start_index, end_index, 1)
+        elif count == int(x/100) and count == 0:
+            num = int(Game_State_Array[end_index])
+            Game_State_Array[end_index] = temp1
+            Game_State_Array.insert(end_index + 1, str(num - 1))
+            surrounding_index_numeric(start_index, end_index, 1)
+        else:
+            if int(Game_State_Array[end_index]) > int(x/100):
+                num = int(Game_State_Array[end_index])
+                if int(x/100) >= 1:
+                    Game_State_Array[end_index] = str(int(x/100) - count)
+                    Game_State_Array.insert(end_index + 1, temp1)
+                    if (num - (int(x/100) - count + 1)) > 0:
+                        Game_State_Array.insert(end_index + 2, str(num - (int(x/100) - count + 1)))
+                        surrounding_index_numeric(start_index, end_index, 2)
+                    else:
+                        surrounding_index_numeric(start_index, end_index, 1)
+                elif int(x/100) == 0:
+                    Game_State_Array[end_index] = temp1
+                    Game_State_Array.insert(end_index + 1, str(num - 1))
+                    surrounding_index_numeric(start_index, end_index, 1)
+            elif int(x/100) > int(Game_State_Array[end_index]):
+                num = int(Game_State_Array[end_index])
+                Game_State_Array[end_index] = str(int(x / 100) - count)
+                Game_State_Array.insert(end_index + 1, temp1)
+                if num != (int(x / 100) - count + 1):
+                    Game_State_Array.insert(end_index + 2, str(num - (int(x / 100) - count + 1)))
+                    surrounding_index_numeric(start_index, end_index, 2)
+                else:
+                    surrounding_index_numeric(start_index, end_index, 1)
+            elif int(x/100) == int(Game_State_Array[end_index]):
+                if int(x/100) == count:
+                    num = int(Game_State_Array[end_index])
+                    Game_State_Array[end_index] = temp1
+                    if num != 1:
+                        Game_State_Array.insert(end_index + 1, str(num - 1))
+                        surrounding_index_numeric(start_index, end_index, 1)
+                    else:
+                        surrounding_index_numeric(start_index, end_index, 0)
+                else:
+                    num = int(Game_State_Array[end_index])
+                    Game_State_Array[end_index] = str(int(x / 100) - count)
+                    Game_State_Array.insert(end_index + 1, temp1)
+                    Game_State_Array.insert(end_index + 2, str(num - (int(x / 100) - count + 1)))
+                    surrounding_index_numeric(start_index, end_index, 2)
+
+        #else: # if count != int(x/100), which suggests that theres number at end index and our x coord falls somewhere in the middle of that numbers blank squares
+        #    Game_State_Array[end_index] = str(int(x/100) - count)#str(int(Game_State_Array[end_index])-1)
+        #    Game_State_Array.insert(end_index + 1, temp1)
+        #    if int(x/100) != 7:
+        #        Game_State_Array.insert(end_index + 2, str(8 - int(x/100) - 1))
+        #    if start_index > end_index and int(x/100) != 7:
+        #        prior_index_numeric(start_index + 2)
+        #    elif start_index > end_index:
+        #        prior_index_numeric(start_index + 1)
+        #    elif end_index > start_index:
+        #        prior_index_numeric(start_index)
     else:
         Game_State_Array[end_index] = temp1
-        Game_State_Array[start_index] = '1'
+        surrounding_index_numeric(start_index, end_index, 0)
+
 
     Game_State = ''.join(str(i) for i in Game_State_Array)
     print(Game_State)
