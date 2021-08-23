@@ -9,7 +9,7 @@ screen = pg.display.set_mode((800, 800))
 pg.display.set_caption("Chess")
 
 # Game State, takes FEN string
-Game_State = 'rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR w KQkq - 0 1' #"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+Game_State = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 Game_State_Array = list(Game_State)
 
 moves = []
@@ -19,6 +19,7 @@ fen_index_num = 0
 fen_index_row = 0
 fen_index_col = 0
 clicked = False
+white_turn = True
 fen_index_when_clicked = 0
 fen_index_when_released = 0
 x = 0
@@ -120,6 +121,21 @@ def fen_index_of_click():
                 fen_index_num += 1
     print(fen_index_num)
     return
+
+def turn_rotater():
+    global white_turn
+    count = 0
+    for i in Game_State:
+        count += 1
+        if i == ' ':
+            turn = Game_State_Array[count]
+            if turn == 'w':
+                white_turn = False #rotate it
+                Game_State_Array[count] = 'b'
+            elif turn == 'b':
+                white_turn = True
+                Game_State_Array[count] = 'w'
+    return white_turn
 
 def surrounding_index_numeric(start_index, end_index, i):
     if end_index > start_index:
@@ -229,15 +245,12 @@ def location():
             break
     return
 
-
-#need to determine if in check, maybe an overarching class for pieces so that can restrict movement if in check
 class Pieces:
     def __init__(self, x, y, p):
         self.x = x
         self.y = y
         self.p = p
-        self.coord = (x/100, y/100)
-        #self.coord =
+        #self.coord = (x/100, y/100)
         if self.p.islower():
             self.colour = 'b'
         elif self.p.isupper():
@@ -253,10 +266,6 @@ class Rook(Pieces):
         max_down = 0
         max_right = 0
         max_left = 0
-        #i can know the type of piece on a square that's landed on because of mouse release
-        #gap upwards is 700-x then 600-x etc...
-        #gap downwards is
-        #coord = self.coord
         while (x//100 + max_left - 1) >= 0:
             if coordinates[y//100][x//100 + max_left - 1] == '-':
                 max_left -= 1
@@ -268,7 +277,6 @@ class Rook(Pieces):
                 break
             else:
                 break
-
         while ((x/100) + max_right + 1) <= 7:
             if coordinates[(y//100)][(x//100 + max_right + 1)] == '-':
                 max_right += 1
@@ -280,7 +288,6 @@ class Rook(Pieces):
                 break
             else:
                 break
-
         while (y//100 + max_down + 1) <= 7:
             if coordinates[y//100 + max_down + 1][x//100] == '-':
                 max_down += 1
@@ -292,7 +299,6 @@ class Rook(Pieces):
                 break
             else:
                 break
-
         while (y//100 + max_up + 1) >= 0:
             if coordinates[y//100 + max_up - 1][x//100] == '-':
                 max_up -= 1
@@ -304,7 +310,6 @@ class Rook(Pieces):
                 break
             else:
                 break
-
         for i in range(100,800,100):
             if (x-i)//100 >= x//100 + max_left:
                 moves.append((x-i, y))
@@ -321,33 +326,87 @@ class Knight(Pieces):
         moves = []
         x = self.x
         y = self.y
+        colour = self.colour
         for v in [-200, -100, 100, 200]:
             if abs(v) % 200 == 0:
                 if x-100 in range (0,800,100) and y+v in range (0,800,100):
-                    moves.append((x-100, y+v))
+                    if (colour == 'w' and (coordinates[(y + v) // 100][(x - 100 )// 100].islower() or coordinates[(y + v) // 100][(x - 100) // 100] == '-')) or (colour == 'b' and (coordinates[(y + v) // 100][(x - 100) // 100].isupper() or coordinates[(y + v) // 100][(x - 100) // 100] == '-')):
+                        moves.append((x-100, y+v))
                 if x+100 in range(0, 800, 100) and y+v in range(0, 800, 100):
-                    moves.append((x+100, y+v))
+                    if (colour == 'w' and (coordinates[(y + v) // 100][(x + 100 )// 100].islower() or coordinates[(y + v) // 100][(x + 100) // 100] == '-')) or (colour == 'b' and (coordinates[(y + v) // 100][(x + 100) // 100].isupper() or coordinates[(y + v) // 100][(x + 100) // 100] == '-')):
+                        moves.append((x+100, y+v))
             else:
                 if x-200 in range(0, 800, 100) and y + v in range(0, 800, 100):
-                    moves.append((x-200, y+v))
+                    if (colour == 'w' and (coordinates[(y + v) // 100][(x - 200 )// 100].islower() or coordinates[(y + v) // 100][(x - 200) // 100] == '-')) or (colour == 'b' and (coordinates[(y + v) // 100][(x - 200) // 100].isupper() or coordinates[(y + v) // 100][(x - 200) // 100] == '-')):
+                        moves.append((x-200, y+v))
                 if x + 200 in range(0, 800, 100) and y + v in range(0, 800, 100):
-                    moves.append((x+200, y+v))
+                    if (colour == 'w' and (coordinates[(y + v) // 100][(x + 200 )// 100].islower() or coordinates[(y + v) // 100][(x + 200) // 100] == '-')) or (colour == 'b' and (coordinates[(y + v) // 100][(x + 200) // 100].isupper() or coordinates[(y + v) // 100][(x + 200) // 100] == '-')):
+                        moves.append((x+200, y+v))
         return moves
 
 class Bishop(Pieces):
     def moves(self):
         moves = []
-        x = self.x
-        y = self.y
-        for i in range(100, 800, 100):
-            if (x-i) >= 0 and (y-i) >= 0:
-                moves.append((x-i, y-i))
-            if (x+i) <= 700 and (y+i) <= 700:
-                moves.append((x+i, y+i))
-            if (x+i) <= 700 and (y-i) >= 0:
-                moves.append((x+i, y-i))
-            if (x-i) >= 0 and (y+i) <= 700:
-                moves.append((x-i, y+i))
+        x = self.x//100
+        y = self.y//100
+        colour = self.colour
+        max_up_left = 0 #all positive values
+        max_up_right = 0
+        max_down_left = 0
+        max_down_right = 0
+        while (x - max_up_left - 1) >= 0 and (y - max_up_left - 1) >= 0:
+            if coordinates[y - max_up_left - 1][x - max_up_left - 1] == '-':
+                max_up_left += 1
+            elif colour == 'b' and coordinates[y - max_up_left - 1][x - max_up_left - 1].isupper():
+                max_up_left += 1
+                break
+            elif colour == 'w' and coordinates[y - max_up_left - 1][x - max_up_left - 1].islower():
+                max_up_left += 1
+                break
+            else:
+                break
+        while (x + max_up_right + 1) <= 7 and (y - max_up_right - 1) >= 0:
+            if coordinates[y - max_up_right - 1][x + max_up_right + 1] == '-':
+                max_up_right += 1
+            elif colour == 'b' and coordinates[y - max_up_right - 1][x + max_up_right + 1].isupper():
+                max_up_right += 1
+                break
+            elif colour == 'w' and coordinates[y - max_up_right - 1][x + max_up_right + 1].islower():
+                max_up_right += 1
+                break
+            else:
+                break
+        while (x - max_down_left - 1) >= 0 and (y + max_down_left + 1) <= 7:
+            if coordinates[y + max_down_left + 1][x - max_down_left - 1] == '-':
+                max_down_left += 1
+            elif colour == 'b' and coordinates[y + max_down_left + 1][x - max_down_left - 1].isupper():
+                max_down_left += 1
+                break
+            elif colour == 'w' and coordinates[y + max_down_left + 1][x - max_down_left - 1].islower():
+                max_down_left += 1
+                break
+            else:
+                break
+        while (x + max_down_right + 1) <= 7 and (y + max_down_right + 1) <= 7:
+            if coordinates[y + max_down_right + 1][x + max_down_right + 1] == '-':
+                max_down_right += 1
+            elif colour == 'b' and coordinates[y + max_down_right + 1][x + max_down_right + 1].isupper():
+                max_down_right += 1
+                break
+            elif colour == 'w' and coordinates[y + max_down_right + 1][x + max_down_right + 1].islower():
+                max_down_right += 1
+                break
+            else:
+                break
+        for i in range(1, 8):
+            if (x-i) >= x-max_up_left and (y-i) >= y-max_up_left:
+                moves.append(((x-i)*100, (y-i)*100))
+            if (x+i) <= x+max_down_right and (y+i) <= y+max_down_right:
+                moves.append(((x+i)*100, (y+i)*100))
+            if (x+i) <= x+max_up_right and (y-i) >= y-max_up_right:
+                moves.append(((x+i)*100, (y-i)*100))
+            if (x-i) >= x-max_down_left and (y+i) <= y+max_down_left:
+                moves.append(((x-i)*100, (y+i)*100))
         return moves
 
 class Queen(Pieces):
@@ -355,60 +414,77 @@ class Queen(Pieces):
         moves = []
         x = self.x
         y = self.y
-        for i in range(100, 800, 100):
-            if x - (i) >= 0:
-                moves.append((x - i, y))
-            if x + (i) <= 700:
-                moves.append((x + i, y))
-            if y - (i) >= 0:
-                moves.append((x, y - i))
-            if y + (i) <= 700:
-                moves.append((x, y + i))
-            if (x-i) >= 0 and (y-i) >= 0:
-                moves.append((x-i, y-i))
-            if (x+i) <= 700 and (y+i) <= 700:
-                moves.append((x+i, y+i))
-            if (x+i) <= 700 and (y-i) >= 0:
-                moves.append((x+i, y-i))
-            if (x-i) >= 0 and (y+i) <= 700:
-                moves.append((x-i, y+i))
-        return moves
+        p = self.p
+        rook = Rook(x, y, p)
+        bishop = Bishop(x, y, p)
+        rook_moves = rook.moves()
+        bishop_moves = bishop.moves()
+        queen_list = rook_moves + bishop_moves
+        return queen_list
 
 class King(Pieces): # need to add castling
     def moves(self):
         moves = []
-        x = self.x
-        y = self.y
-        if x - (100) >= 0:
-            moves.append((x - 100, y))
-        if x + (100) <= 700:
-            moves.append((x + 100, y))
-        if y - (100) >= 0:
-            moves.append((x, y - 100))
-        if y + (100) <= 700:
-            moves.append((x, y + 100))
-        if (x - 100) >= 0 and (y - 100) >= 0:
-            moves.append((x - 100, y - 100))
-        if (x + 100) <= 700 and (y + 100) <= 700:
-            moves.append((x + 100, y + 100))
-        if (x + 100) <= 700 and (y - 100) >= 0:
-            moves.append((x + 100, y - 100))
-        if (x - 100) >= 0 and (y + 100) <= 700:
-            moves.append((x - 100, y + 100))
+        x = self.x//100
+        y = self.y//100
+        colour = self.colour
+        if x - 1 >= 0 :
+            if (colour == 'w' and coordinates[y][(x - 1)].islower()) or (colour == 'b' and coordinates[y][(x - 1)].isupper()) or (coordinates[y][(x - 1)] == '-'):
+                moves.append(((x*100) - 100, (y*100)))
+        if x + 1 <= 7:
+            if (colour == 'w' and coordinates[y][(x + 1)].islower()) or (colour == 'b' and coordinates[y][(x + 1)].isupper()) or (coordinates[y][(x + 1)] == '-'):
+                moves.append(((x*100) + 100, (y*100)))
+        if y - 1 >= 0:
+            if (colour == 'w' and coordinates[(y - 1)][x].islower()) or (colour == 'b' and coordinates[(y - 1)][x].isupper()) or (coordinates[(y - 1)][x] == '-'):
+                moves.append(((x*100) , (y*100) - 100))
+        if y + 1 <= 7:
+            if (colour == 'w' and coordinates[(y + 1)][x].islower()) or (colour == 'b' and coordinates[(y + 1)][x].isupper()) or (coordinates[(y + 1)][x] == '-'):
+                moves.append(((x*100) , (y*100) + 100))
+        if x - 1 >= 0 and y - 1 >= 0:
+            if (colour == 'w' and coordinates[y - 1][(x - 1)].islower()) or (colour == 'b' and coordinates[y - 1][(x - 1)].isupper()) or (coordinates[y - 1][(x - 1)] == '-'):
+                moves.append(((x*100) - 100, (y*100) - 100))
+        if x + 1 <= 7 and y + 1 <= 7:
+            if (colour == 'w' and coordinates[y + 1][(x + 1)].islower()) or (colour == 'b' and coordinates[y + 1][(x + 1)].isupper()) or (coordinates[y + 1][(x + 1)] == '-'):
+                moves.append(((x*100) + 100, (y*100) + 100))
+        if x + 1 <= 7 and y - 1 >= 0:
+            if (colour == 'w' and coordinates[y - 1][(x + 1)].islower()) or (colour == 'b' and coordinates[y - 1][(x + 1)].isupper()) or (coordinates[y - 1][(x + 1)] == '-'):
+                moves.append(((x*100) + 100, (y*100) - 100))
+        if x - 1 >= 0 and y + 1 <= 7:
+            if (colour == 'w' and coordinates[y + 1][(x - 1)].islower()) or (colour == 'b' and coordinates[y + 1][(x - 1)].isupper()) or (coordinates[y + 1][(x - 1)] == '-'):
+                moves.append(((x*100) - 100, (y*100) + 100))
         return moves
 
 class Pawn(Pieces):
     def moves(self):
         moves = []
-        x = self.x
-        y = self.y
+        x = self.x//100
+        y = self.y//100
         colour = self.colour
-        if colour == 'b':
-            if y == 100:
-                moves.append(())
-
+        if colour == 'w':
+            if y == 6 and coordinates[4][x] == '-':
+                moves.append(((x * 100), (y * 100) - 200))
+            if y - 1 >= 0 and coordinates[y-1][x] == '-': #implement queening
+                moves.append(((x * 100), (y * 100) - 100))
+            if y - 1 >= 0 and x + 1 <= 7:
+                if coordinates[y - 1][(x + 1)].islower():
+                    moves.append(((x * 100) + 100, (y * 100) - 100))
+            if y - 1 >= 0 and x - 1 >= 0:
+                if coordinates[y - 1][(x - 1)].islower():
+                    moves.append(((x * 100) - 100, (y * 100) - 100))
+            #implement en passant
+        elif colour == 'b':
+            if y == 1 and coordinates[3][x] == '-':
+                moves.append(((x * 100), (y * 100) + 200))
+            if y + 1 <= 7 and coordinates[y+1][x] == '-': #implement queening
+                moves.append(((x * 100), (y * 100) + 100))
+            if y + 1 <= 7 and x + 1 <= 7:
+                if coordinates[y + 1][(x + 1)].isupper():
+                    moves.append(((x * 100) + 100, (y * 100) + 100))
+            if y + 1 <= 7 and x - 1 >= 0:
+                if coordinates[y + 1][(x - 1)].isupper():
+                    moves.append(((x * 100) - 100, (y * 100) + 100))
+            #implement en passant
         return moves
-
 
 running = True
 while running:
@@ -441,7 +517,15 @@ while running:
         if event.type == pg.MOUSEBUTTONUP:
             fen_index_of_click()
             fen_index_when_released = fen_index_num
-            if (x, y) in moves:
-                move(fen_index_when_clicked, fen_index_when_released)
+            if (x, y) in moves and Game_State_Array[fen_index_when_clicked].isalpha():
+                if white_turn:
+                    if Game_State_Array[fen_index_when_clicked].isupper():
+                        move(fen_index_when_clicked, fen_index_when_released)
+                        turn_rotater()
+                else:
+                    if Game_State_Array[fen_index_when_clicked].islower():
+                        move(fen_index_when_clicked, fen_index_when_released)
+                        turn_rotater()
             moves = 0
+
     pg.display.update()
