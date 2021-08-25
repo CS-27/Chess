@@ -9,7 +9,7 @@ screen = pg.display.set_mode((800, 800))
 pg.display.set_caption("Chess")
 
 # Game State, takes FEN string
-Game_State = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+Game_State = 'rnb1kbnr/p1pqpppp/1p6/3p4/Q2P4/8/PPP1PPPP/RNB1KBNR b KQkq - 0 1'#"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 Game_State_Array = list(Game_State)
 
 moves = []
@@ -20,7 +20,7 @@ fen_index_row = 0
 fen_index_col = 0
 clicked = False
 check = False
-white_turn = True
+white_turn = not True
 fen_index_when_clicked = 0
 fen_index_when_released = 0
 x = 0
@@ -30,6 +30,10 @@ check_y = 0
 check_piece = 0
 check_colour = 0
 check_piece_symbol = 0
+coords_of_checking_pieces = []
+discovered_attack_on_king = False
+global_colour = 0
+global_piece_symbol = 0
 
 # Board
 board = pg.Surface((cell_size * 8, cell_size * 8))
@@ -42,9 +46,6 @@ for i in range(0, 8):
             pg.draw.rect(board, (242, 242, 242), (i * cell_size, j * cell_size, cell_size, cell_size))
 
 # Pieces
-# White pieces are designated using upper-case letters ("PNBRQK") while black pieces use lowercase ("pnbrqk")
-# Empty squares are noted using digits 1 through 8 (the number of empty squares), and "/" separates ranks.
-# Active color. "w" means White moves next, "b" means Black moves next.
 # If neither side can castle, this is "-". Otherwise, this has one or more letters: "K" (White can castle kingside), "Q" (White can castle queenside), "k" (Black can castle kingside), and/or "q" (Black can castle queenside). A move that temporarily prevents castling does not negate this notation.
 # En passant target square in algebraic notation. If there's no en passant target square, this is "-". If a pawn has just made a two-square move, this is the position "behind" the pawn. This is recorded regardless of whether there is a pawn in position to make an en passant capture.[6]
 # etc refer to https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
@@ -235,6 +236,21 @@ def move(start_index, end_index):
     print(Game_State_Array)
     return
 
+def search_for_symbol(x, y, symbol):
+    if symbol.upper() == 'R':
+        temp_piece = Rook(x, y, symbol)
+    elif symbol.upper() == 'N':
+        temp_piece = Knight(x, y, symbol)
+    elif symbol.upper() == 'B':
+        temp_piece = Bishop(x, y, symbol)
+    elif symbol.upper() == 'Q':
+        temp_piece = Queen(x, y, symbol)
+    elif symbol.upper() == 'K':
+        temp_piece = King(x, y, symbol)
+    elif symbol.upper() == 'P':
+        temp_piece = Pawn(x, y, symbol)
+    return temp_piece
+
 def location():
     global coordinates
     coordinates = [[], [], [], [], [], [], [], []]
@@ -251,20 +267,23 @@ def location():
             break
     return
 
-def in_check(x, y, piece, colour, piece_symbol):
-    global check
+def change_global_check_coords(x, y):
     global check_x
     global check_y
+    check_x = x
+    check_y = y
+    return
+
+def in_check(x, y, piece, colour, piece_symbol):
+    global check
     global check_piece
     global check_colour
     global check_piece_symbol
     check = False
-    check_x = x//100
-    check_y = y//100
-    check_piece = piece
     check_piece_symbol = piece_symbol
+    check_piece = search_for_symbol(check_x, check_y, check_piece_symbol)
     check_colour = colour
-    moves = piece.moves(x, y, colour)
+    moves = check_piece.moves(check_x, check_y, colour)
     for (i, j) in moves:
         if colour == 'w':
             if coordinates[j//100][i//100] == 'k':
@@ -274,45 +293,142 @@ def in_check(x, y, piece, colour, piece_symbol):
                 check = True
 
 def block_check(x, y, piece, colour, piece_symbol):
-#    x = x//100
-#    y = y//100
-#    if check_x > x:
-#        x_dist = check_x - x
-#    elif check_x == x:
-#        x_dist = 0
-#    elif check_x < x:
-#        x_dist = x - check_x
-#    if check_y > y:
-#        y_dist = check_y - y
-#    elif check_y == y:
-#        y_dist = 0
-#    elif check_y < y:
-#        y_dist = y - check_y
     moves1 = []
     moves2 = piece.moves(x, y, colour)
-    if check_piece_symbol.upper() == 'R':
-        temp_piece = Rook(x, y, piece_symbol)
-    elif check_piece_symbol.upper() == 'N':
-        temp_piece = Knight(x, y, piece_symbol)
-    elif check_piece_symbol.upper() == 'B':
-        temp_piece = Bishop(x, y, piece_symbol)
-    elif check_piece_symbol.upper() == 'Q':
-        temp_piece = Queen(x, y, piece_symbol)
-    elif check_piece_symbol.upper() == 'K':
-        temp_piece = King(x, y, piece_symbol)
-    elif check_piece_symbol.upper() == 'P':
-        temp_piece = Pawn(x, y, piece_symbol)
+    temp_piece = search_for_symbol(x, y, check_piece_symbol)
     if piece_symbol.upper() != 'K':
         for (i, j) in moves2:
             moves3 = temp_piece.moves(i, j, colour)
-            if ((check_x * 100, check_y * 100) in moves3) or ((check_x * 100, check_y * 100) == (i, j)):
+            if ((check_x, check_y) in moves3) or ((check_x, check_y) == (i, j)):
                 moves1.append((i, j))
     elif piece_symbol.upper() == 'K':
         for (i, j) in moves2:
             moves3 = temp_piece.moves(i, j, colour)
-            if (check_x * 100, check_y * 100) not in moves3:
+            if (check_x, check_y) not in moves3:
                 moves1.append((i, j))
     return moves1
+
+def path_from_piece_to_king(x, y, piece, colour, piece_symbol):
+    if colour == 'w':
+        temp_piece = search_for_symbol(x, y, 'q')
+        temp_moves = temp_piece.moves(x, y, 'b')
+        for (a, b) in temp_moves:
+            if coordinates[b // 100][a // 100] == 'K':
+                return True
+    elif colour == 'b':
+        temp_piece = search_for_symbol(x, y, 'Q')
+        temp_moves = temp_piece.moves(x, y, 'w')
+        for (a, b) in temp_moves:
+            if coordinates[b // 100][a // 100] == 'k':
+                return True
+    else:
+        return False
+
+#if there is a clear path from own piece to king then check for pieces attacking piece,
+#if a piece is going to move, then first find the pieces that are attacking that piece (by setting that piece equal to each of the piece types and doing something similar to the check fn) then after the piece moves run the moves of the attackers and if 'k' (or 'k') is on the coord within moves then check is true
+#need to add symbol as an input for moves method for eac piece class
+#
+def pieces_attacking_piece(x, y, piece, colour, piece_symbol):
+    global coords_of_checking_pieces
+    coords_of_checking_pieces = []
+    for i in ['R', 'B', 'Q']:
+        if colour == 'w':
+            temp_piece = search_for_symbol(x, y, i.upper())
+            temp_moves = temp_piece.moves(x, y, colour)
+            for (a, b) in temp_moves:
+                if coordinates[b//100][a//100] == i.lower():
+                    coords_of_checking_pieces.append((a, b))
+        elif colour == 'b':
+            temp_piece = search_for_symbol(x, y, i.lower())
+            temp_moves = temp_piece.moves(x, y, colour)
+            for (a, b) in temp_moves:
+                if coordinates[b//100][a//100] == i.upper():
+                    coords_of_checking_pieces.append((a, b))
+    return
+
+#x and y will be loaded after first click
+def new_attack_on_king(x, y, piece, colour, piece_symbol):
+    global discovered_attack_on_king
+    for (a, b) in coords_of_checking_pieces:
+        temp_piece = search_for_symbol(x, y, coordinates[b // 100][a // 100])
+        if colour == 'w':
+            temp_moves = temp_piece.moves(x, y, 'b')
+            for (c, d) in temp_moves:
+                if coordinates[d // 100][c // 100] == 'K':
+                    if coordinates[b // 100][a // 100].upper() == 'B' or coordinates[b // 100][a // 100].upper() == 'Q':
+                        if x < a and y < b:  # bishop moving up and left
+                            if c < x and d < y:
+                                discovered_attack_on_king = True
+                        elif x > a and y < b:  # bishop moving up and right
+                            if c > x and d < y:
+                                discovered_attack_on_king = True
+                        elif x < a and y > b:  # bishop moving down and left
+                            if c < x and d > y:
+                                discovered_attack_on_king = True
+                        elif x > a and y > b:  # bishop moving down and right
+                            if c > x and d > y:
+                                discovered_attack_on_king = True
+                    elif coordinates[b // 100][a // 100].upper() == 'R' or coordinates[b // 100][a // 100].upper() == 'Q':
+                        if x < a and y == b:  # rook moving left
+                            if c < x and d == y:
+                                discovered_attack_on_king = True
+                        elif x > a and y == b:  # rook moving right
+                            if c > x and d == y:
+                                discovered_attack_on_king = True
+                        elif y < b and x == a:  # rook moving up
+                            if d < y and c == x:
+                                discovered_attack_on_king = True
+                        elif y > b and x == a:  # rook moving down
+                            if d > y and c == x:
+                                discovered_attack_on_king = True
+        elif colour == 'b':
+            temp_moves = temp_piece.moves(x, y, 'w')
+            for (c, d) in temp_moves:
+                if coordinates[d // 100][c // 100] == 'k':
+                    if coordinates[b // 100][a // 100].upper() == 'B' or coordinates[b // 100][a // 100].upper() == 'Q':
+                        if x < a and y < b:  # bishop moving up and left
+                            if c < x and d < y:
+                                discovered_attack_on_king = True
+                                return
+                        elif x > a and y < b:  # bishop moving up and right
+                            if c > x and d < y:
+                                discovered_attack_on_king = True
+                                return
+                        elif x < a and y > b:  # bishop moving down and left
+                            if c < x and d > y:
+                                discovered_attack_on_king = True
+                                return
+                        elif x > a and y > b:  # bishop moving down and right
+                            if c > x and d > y:
+                                discovered_attack_on_king = True
+                                return
+                    elif coordinates[b // 100][a // 100].upper() == 'R' or coordinates[b // 100][
+                        a // 100].upper() == 'Q':
+                        if x < a and y == b:  # rook moving left
+                            if c < x and d == y:
+                                discovered_attack_on_king = True
+                                return
+                        elif x > a and y == b:  # rook moving right
+                            if c > x and d == y:
+                                discovered_attack_on_king = True
+                                return
+                        elif y < b and x == a:  # rook moving up
+                            if d < y and c == x:
+                                discovered_attack_on_king = True
+                                return
+                        elif y > b and x == a:  # rook moving down
+                            if d > y and c == x:
+                                discovered_attack_on_king = True
+                                return
+    return
+
+#if new attack on king is true then don't allow for fen index when released, aka dont allow move
+#piece must keep same direction moving from x y to king
+#a better way to do this may be to just have a fen history list and to use that in tandem with coordinates creation from fen to check things and if somthing from the new fen isn't good then we revert to previous fen before rendering.
+
+
+
+
 
 
 class Pieces:
@@ -329,94 +445,90 @@ class Pieces:
 class Rook(Pieces):
     def moves(self, x, y, colour):
         moves = []
-        x = int(self.x)
-        y = int(self.y)
+        x = x//100
+        y = y//100
         p = self.p
         colour = self.colour
         max_up = 0
         max_down = 0
         max_right = 0
         max_left = 0
-        while (x//100 + max_left - 1) >= 0:
-            if coordinates[y//100][x//100 + max_left - 1] == '-':
+        while (x + max_left - 1) >= 0:
+            if coordinates[y][x + max_left - 1] == '-':
                 max_left -= 1
-            elif (colour == 'b' and coordinates[y // 100][x // 100 + max_left - 1].isupper()) or (colour == 'w' and coordinates[y // 100][x // 100 + max_left - 1].islower()):
+            elif (colour == 'b' and coordinates[y][x + max_left - 1].isupper()) or (colour == 'w' and coordinates[y][x + max_left - 1].islower()):
                 max_left -= 1
                 break
-            elif (coordinates[y // 100][x // 100 + max_left - 1] == p):
+            elif (coordinates[y][x + max_left - 1] == p):
                 max_left -= 1
             else:
                 break
-        while ((x/100) + max_right + 1) <= 7:
-            if coordinates[(y//100)][(x//100 + max_right + 1)] == '-':
+        while (x + max_right + 1) <= 7:
+            if coordinates[y][x + max_right + 1] == '-':
                 max_right += 1
-            elif (colour == 'b' and coordinates[y // 100][x // 100 + max_right + 1].isupper()) or (colour == 'w' and coordinates[y // 100][x // 100 + max_right + 1].islower()):
+            elif (colour == 'b' and coordinates[y][x + max_right + 1].isupper()) or (colour == 'w' and coordinates[y][x + max_right + 1].islower()):
                 max_right += 1
                 break
-            elif coordinates[y // 100][x // 100 + max_right + 1] == p:
+            elif coordinates[y][x + max_right + 1] == p:
                 max_right += 1
             else:
                 break
-        while (y//100 + max_down + 1) <= 7:
-            if coordinates[y//100 + max_down + 1][x//100] == '-':
+        while (y + max_down + 1) <= 7:
+            if coordinates[y + max_down + 1][x] == '-':
                 max_down += 1
-            elif (colour == 'b' and coordinates[y // 100 + max_down + 1][x // 100].isupper()) or (colour == 'w' and coordinates[y // 100 + max_down + 1][x // 100].islower()):
+            elif (colour == 'b' and coordinates[y + max_down + 1][x].isupper()) or (colour == 'w' and coordinates[y + max_down + 1][x].islower()):
                 max_down += 1
                 break
-            elif coordinates[y // 100 + max_down + 1][x // 100] == p:
+            elif coordinates[y + max_down + 1][x] == p:
                 max_down += 1
             else:
                 break
-        while (y//100 + max_up + 1) >= 0:
-            if coordinates[y//100 + max_up - 1][x//100] == '-':
+        while (y + max_up - 1) >= 0:
+            if coordinates[y + max_up - 1][x] == '-':
                 max_up -= 1
-            elif (colour == 'b' and coordinates[y // 100 + max_up - 1][x // 100].isupper()) or (colour == 'w' and coordinates[y // 100 + max_up - 1][x // 100].islower()):
+            elif (colour == 'b' and coordinates[y + max_up - 1][x].isupper()) or (colour == 'w' and coordinates[y + max_up - 1][x].islower()):
                 max_up -= 1
                 break
-            elif coordinates[y // 100 + max_up - 1][x // 100] == p:
+            elif coordinates[y + max_up - 1][x] == p:
                 max_up -= 1
             else:
                 break
-        for i in range(100,800,100):
-            if (x-i)//100 >= x//100 + max_left:
-                moves.append((x-i, y))
-            if (x + i) // 100 <= x //100 + max_right:
-                moves.append((x+i, y))
-            if (y - i) // 100 >= y // 100 + max_up: #up the board is (-) in y direction
-                moves.append((x, y-i))
-            if (y + i) // 100 <= y // 100 + max_down:
-                moves.append((x, y+i))
+        for i in range(1, 8):
+            if x-i >= x+max_left:
+                moves.append(((x-i)*100, y*100))
+            if x+i <= x+max_right:
+                moves.append(((x+i)*100, y*100))
+            if y-i >= y+max_up: #up the board is (-) in y direction
+                moves.append((x*100, (y-i)*100))
+            if y+i <= y+max_down:
+                moves.append((x*100, (y+i)*100))
         return moves
 
 class Knight(Pieces):
     def moves(self, x, y, colour):
+        x = x//100
+        y = y//100
         moves = []
-        x = self.x
-        y = self.y
         p = self.p
         colour = self.colour
-        for v in [-200, -100, 100, 200]:
-            if abs(v) % 200 == 0:
-                if x-100 in range (0,800,100) and y+v in range (0,800,100):
-                    if (colour == 'w' and (coordinates[(y + v) // 100][(x - 100 )// 100].islower() or coordinates[(y + v) // 100][(x - 100) // 100] == '-')) or (colour == 'b' and (coordinates[(y + v) // 100][(x - 100) // 100].isupper() or coordinates[(y + v) // 100][(x - 100) // 100] == '-')):
-                        moves.append((x-100, y+v))
-                if x+100 in range(0, 800, 100) and y+v in range(0, 800, 100):
-                    if (colour == 'w' and (coordinates[(y + v) // 100][(x + 100 )// 100].islower() or coordinates[(y + v) // 100][(x + 100) // 100] == '-')) or (colour == 'b' and (coordinates[(y + v) // 100][(x + 100) // 100].isupper() or coordinates[(y + v) // 100][(x + 100) // 100] == '-')):
-                        moves.append((x+100, y+v))
+        for v in [-2, -1, 1, 2]:
+            if abs(v) % 2 == 0:
+                for i in [1, -1]:
+                    if x+i in range (0,8) and y+v in range (0,8):
+                        if (colour == 'w' and (coordinates[y + v][x + i].islower() or coordinates[y + v][x + i] == '-')) or (colour == 'b' and (coordinates[y + v][x + i].isupper() or coordinates[y + v][x + i] == '-')):
+                            moves.append(((x+i)*100, (y+v)*100))
             else:
-                if x-200 in range(0, 800, 100) and y + v in range(0, 800, 100):
-                    if (colour == 'w' and (coordinates[(y + v) // 100][(x - 200 )// 100].islower() or coordinates[(y + v) // 100][(x - 200) // 100] == '-')) or (colour == 'b' and (coordinates[(y + v) // 100][(x - 200) // 100].isupper() or coordinates[(y + v) // 100][(x - 200) // 100] == '-')):
-                        moves.append((x-200, y+v))
-                if x + 200 in range(0, 800, 100) and y + v in range(0, 800, 100):
-                    if (colour == 'w' and (coordinates[(y + v) // 100][(x + 200 )// 100].islower() or coordinates[(y + v) // 100][(x + 200) // 100] == '-')) or (colour == 'b' and (coordinates[(y + v) // 100][(x + 200) // 100].isupper() or coordinates[(y + v) // 100][(x + 200) // 100] == '-')):
-                        moves.append((x+200, y+v))
+                for j in [2, -2]:
+                    if x + j in range(0, 8) and y + v in range(0, 8):
+                        if (colour == 'w' and (coordinates[y + v][x + j].islower() or coordinates[y + v][x + j] == '-')) or (colour == 'b' and (coordinates[y + v][x + j].isupper() or coordinates[y + v][x + j] == '-')):
+                            moves.append(((x+j)*100, (y+v)*100))
         return moves
 
 class Bishop(Pieces):
     def moves(self, x, y, colour):
         moves = []
-        x = self.x//100
-        y = self.y//100
+        x = x // 100
+        y = y // 100
         p = self.p
         colour = self.colour
         max_up_left = 0 #all positive values
@@ -476,9 +588,9 @@ class Bishop(Pieces):
 
 class Queen(Pieces):
     def moves(self, x, y, colour):
+        x = x
+        y = y
         moves = []
-        #x = self.x
-        #y = self.y
         p = self.p
         rook = Rook(x, y, p)
         bishop = Bishop(x, y, p)
@@ -490,8 +602,8 @@ class Queen(Pieces):
 class King(Pieces): # need to add castling
     def moves(self, x, y, colour):
         moves = []
-        x = self.x//100
-        y = self.y//100
+        x = x // 100
+        y = y // 100
         p = self.p
         colour = self.colour
         if x - 1 >= 0 :
@@ -523,8 +635,8 @@ class King(Pieces): # need to add castling
 class Pawn(Pieces):
     def moves(self, x, y, colour):
         moves = []
-        x = self.x//100
-        y = self.y//100
+        x = x // 100
+        y = y // 100
         p = self.p
         colour = self.colour
         if colour == 'w':
@@ -564,60 +676,56 @@ while running:
             fen_index_of_click()
             if clicked == True:
                 fen_index_when_clicked = fen_index_num
-                piece_symbol = Game_State_Array[fen_index_when_clicked]
-                if piece_symbol.isupper():
-                    colour = 'w'
-                elif piece_symbol.islower():
-                    colour = 'b'
+                global_piece_symbol = Game_State_Array[fen_index_when_clicked]
+                if global_piece_symbol.isupper():
+                    global_colour = 'w'
+                elif global_piece_symbol.islower():
+                    global_colour = 'b'
                 start_x = x
                 start_y = y
                 location()
                 print(coordinates)
-                if piece_symbol.upper() == 'R':
-                    piece = Rook(x, y, piece_symbol)
-                elif piece_symbol.upper() == 'N':
-                    piece = Knight(x, y, piece_symbol)
-                elif piece_symbol.upper() == 'B':
-                    piece = Bishop(x, y, piece_symbol)
-                elif piece_symbol.upper() == 'Q':
-                    piece = Queen(x, y, piece_symbol)
-                elif piece_symbol.upper() == 'K':
-                    piece = King(x, y, piece_symbol)
-                elif piece_symbol.upper() == 'P':
-                    piece = Pawn(x, y, piece_symbol)
+                piece = search_for_symbol(x, y, global_piece_symbol)
                 print(x, y)
-                moves = piece.moves(x, y, colour)
+                moves = piece.moves(x, y, global_colour)
                 print(moves)
+            if path_from_piece_to_king(x, y, piece, global_colour, global_piece_symbol):
+                pieces_attacking_piece(x, y, piece, global_colour, global_piece_symbol)
+                discovered_attack_on_king = False
+                new_attack_on_king(x, y, piece, global_colour, global_piece_symbol)
         if event.type == pg.MOUSEBUTTONUP:
             fen_index_of_click()
             fen_index_when_released = fen_index_num
-            if (x, y) in moves and piece_symbol.isalpha():
+            if (x, y) in moves and global_piece_symbol.isalpha() and not discovered_attack_on_king:
                 if white_turn:
                     if check:
-                        check_moves = block_check(start_x, start_y, piece, 'w', piece_symbol)
+                        check_moves = block_check(start_x, start_y, piece, 'w', global_piece_symbol)
                         if (x, y) in check_moves:
                             move(fen_index_when_clicked, fen_index_when_released)
                             turn_rotater()
-                            in_check(x, y, piece, 'w', piece_symbol)
+                            change_global_check_coords(x, y)
+                            in_check(x, y, piece, 'w', global_piece_symbol)
                             print(check)
-                    elif piece_symbol.isupper():
+                    elif global_piece_symbol.isupper():
                         move(fen_index_when_clicked, fen_index_when_released)
                         turn_rotater()
-                        in_check(x, y, piece, 'w', piece_symbol)
+                        change_global_check_coords(x, y)
+                        in_check(x, y, piece, 'w', global_piece_symbol)
                         print(check)
                 else:
                     if check:
-                        check_moves = block_check(start_x, start_y, piece, 'b', piece_symbol)
+                        check_moves = block_check(start_x, start_y, piece, 'b', global_piece_symbol)
                         if (x, y) in check_moves:
                             move(fen_index_when_clicked, fen_index_when_released)
                             turn_rotater()
-                            in_check(x, y, piece, 'b', piece_symbol)
+                            change_global_check_coords(x, y)
+                            in_check(x, y, piece, 'b', global_piece_symbol)
                             print(check)
-                    elif piece_symbol.islower():
+                    elif global_piece_symbol.islower():
                         move(fen_index_when_clicked, fen_index_when_released)
                         turn_rotater()
-                        in_check(x, y, piece, 'b', piece_symbol)
+                        change_global_check_coords(x, y)
+                        in_check(x, y, piece, 'b', global_piece_symbol)
                         print(check)
-            moves = 0
 
     pg.display.update()
