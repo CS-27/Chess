@@ -35,6 +35,7 @@ discovered_attack_on_king = False
 block_attack_on_king = False
 global_colour = 0
 global_piece_symbol = 0
+temp_piece = 0
 
 # Board
 board = pg.Surface((cell_size * 8, cell_size * 8))
@@ -238,19 +239,21 @@ def move(start_index, end_index):
     return
 
 def search_for_symbol(x, y, symbol):
+    global temp_piece
+    temp_piece = 0
     if symbol.upper() == 'R':
-        temp_piece1 = Rook(x, y, symbol)
+        temp_piece = Rook(x, y, symbol)
     elif symbol.upper() == 'N':
-        temp_piece1 = Knight(x, y, symbol)
+        temp_piece = Knight(x, y, symbol)
     elif symbol.upper() == 'B':
-        temp_piece1 = Bishop(x, y, symbol)
+        temp_piece = Bishop(x, y, symbol)
     elif symbol.upper() == 'Q':
-        temp_piece1 = Queen(x, y, symbol)
+        temp_piece = Queen(x, y, symbol)
     elif symbol.upper() == 'K':
-        temp_piece1 = King(x, y, symbol)
+        temp_piece = King(x, y, symbol)
     elif symbol.upper() == 'P':
-        temp_piece1 = Pawn(x, y, symbol)
-    return temp_piece1
+        temp_piece = Pawn(x, y, symbol)
+    return temp_piece
 
 def location():
     global coordinates
@@ -358,75 +361,90 @@ def new_attack_on_king(x, y, piece, colour, piece_symbol, i: range(1,3), temp_sy
         discovered_attack_on_king = False
     if i == 2:
         block_attack_on_king = False
-    for (a, b) in coords_of_checking_pieces:
-        temp_piece = search_for_symbol(x, y, coordinates[b // 100][a // 100])
+    count = 0
+    for e in coords_of_checking_pieces:
+        count += 1
+    if count > 0:
+        for (a, b) in coords_of_checking_pieces:
+            print(coords_of_checking_pieces)
+            print(a, b)
+            temp_piece1 = search_for_symbol(x, y, coordinates[b // 100][a // 100])
+            if colour == 'w':
+                col, k, k2 = 'b', temp_symbol.upper(), 'K'
+            elif colour == 'b':
+                col, k, k2 = 'w', temp_symbol.lower(), 'k'
+            if not isinstance(temp_piece1, int):
+                temp_moves = temp_piece1.moves(x, y, col)
+                for (c, d) in temp_moves:
+                    if coordinates[d // 100][c // 100] == k or coordinates[d // 100][c // 100] == k2:
+                        if coordinates[b // 100][a // 100].upper() == 'B' or coordinates[b // 100][a // 100].upper() == 'Q':
+                            if x < a and y < b:  # bishop moving up and left
+                                if c < x and d < y:
+                                    if i == 1:
+                                        discovered_attack_on_king = True
+                                    if i == 2:
+                                        block_attack_on_king = True
+                            elif x > a and y < b:  # bishop moving up and right
+                                if c > x and d < y:
+                                    if i == 1:
+                                        discovered_attack_on_king = True
+                                    if i == 2:
+                                        block_attack_on_king = True
+                            elif x < a and y > b:  # bishop moving down and left
+                                if c < x and d > y:
+                                    if i == 1:
+                                        discovered_attack_on_king = True
+                                    if i == 2:
+                                        block_attack_on_king = True
+                            elif x > a and y > b:  # bishop moving down and right
+                                if c > x and d > y:
+                                    if i == 1:
+                                        discovered_attack_on_king = True
+                                    if i == 2:
+                                        block_attack_on_king = True
+                        elif coordinates[b // 100][a // 100].upper() == 'R' or coordinates[b // 100][a // 100].upper() == 'Q':
+                            if x < a and y == b:  # rook moving left
+                                if c < x and d == y:
+                                    if i == 1:
+                                        discovered_attack_on_king = True
+                                    if i == 2:
+                                        block_attack_on_king = True
+                            elif x > a and y == b:  # rook moving right
+                                if c > x and d == y:
+                                    if i == 1:
+                                        discovered_attack_on_king = True
+                                    if i == 2:
+                                        block_attack_on_king = True
+                            elif y < b and x == a:  # rook moving up
+                                if d < y and c == x:
+                                    if i == 1:
+                                        discovered_attack_on_king = True
+                                    if i == 2:
+                                        block_attack_on_king = True
+                            elif y > b and x == a:  # rook moving down
+                                if d > y and c == x:
+                                    if i == 1:
+                                        discovered_attack_on_king = True
+                                    if i == 2:
+                                        block_attack_on_king = True
+        return
+
+def safe_square_for_king(x, y, piece, colour, piece_symbol):
+    if piece_symbol.upper() != 'K':
+        return True
+    for i in ['R', 'N', 'B', 'Q', 'K', 'P']:
         if colour == 'w':
-            col, k = 'b', temp_symbol.upper()
-        elif colour == 'b':
-            col, k = 'w', temp_symbol.lower()
-        temp_moves = temp_piece.moves(x, y, col)
-        for (c, d) in temp_moves:
-            if coordinates[d // 100][c // 100] == k:
-                if coordinates[b // 100][a // 100].upper() == 'B' or coordinates[b // 100][a // 100].upper() == 'Q':
-                    if x < a and y < b:  # bishop moving up and left
-                        if c < x and d < y:
-                            if i == 1:
-                                discovered_attack_on_king = True
-                            if i == 2:
-                                block_attack_on_king = True
-                    elif x > a and y < b:  # bishop moving up and right
-                        if c > x and d < y:
-                            if i == 1:
-                                discovered_attack_on_king = True
-                            if i == 2:
-                                block_attack_on_king = True
-                    elif x < a and y > b:  # bishop moving down and left
-                        if c < x and d > y:
-                            if i == 1:
-                                discovered_attack_on_king = True
-                            if i == 2:
-                                block_attack_on_king = True
-                    elif x > a and y > b:  # bishop moving down and right
-                        if c > x and d > y:
-                            if i == 1:
-                                discovered_attack_on_king = True
-                            if i == 2:
-                                block_attack_on_king = True
-                elif coordinates[b // 100][a // 100].upper() == 'R' or coordinates[b // 100][a // 100].upper() == 'Q':
-                    if x < a and y == b:  # rook moving left
-                        if c < x and d == y:
-                            if i == 1:
-                                discovered_attack_on_king = True
-                            if i == 2:
-                                block_attack_on_king = True
-                    elif x > a and y == b:  # rook moving right
-                        if c > x and d == y:
-                            if i == 1:
-                                discovered_attack_on_king = True
-                            if i == 2:
-                                block_attack_on_king = True
-                    elif y < b and x == a:  # rook moving up
-                        if d < y and c == x:
-                            if i == 1:
-                                discovered_attack_on_king = True
-                            if i == 2:
-                                block_attack_on_king = True
-                    elif y > b and x == a:  # rook moving down
-                        if d > y and c == x:
-                            if i == 1:
-                                discovered_attack_on_king = True
-                            if i == 2:
-                                block_attack_on_king = True
-    return
-
-#def still_blocking_king(x, y, piece, colour, piece_symbol):
-    #temp_piece =
-
-
-#if new attack on king is true then don't allow for fen index when released, aka dont allow move
-#piece must keep same direction moving from x y to king
-#a better way to do this may be to just have a fen history list and to use that in tandem with coordinates creation from fen to check things and if somthing from the new fen isn't good then we revert to previous fen before rendering.
-
+            i = i.upper()
+            j = i.lower()
+        else:
+            i = i.lower()
+            j = i.upper()
+        temp_piece2 = search_for_symbol(x, y, i)
+        temp_moves2 = temp_piece2.moves(x, y, colour)
+        for (a, b) in temp_moves2:
+            if coordinates[b//100][a//100] == j:
+                return False
+    return True
 
 
 
@@ -688,7 +706,8 @@ while running:
                 print(coordinates)
                 piece = search_for_symbol(x, y, global_piece_symbol)
                 print(x, y)
-                moves = piece.moves(x, y, global_colour)
+                if not isinstance(piece, int):
+                    moves = piece.moves(x, y, global_colour)
                 print(moves)
             if path_from_piece_to_king(x, y, piece, global_colour, global_piece_symbol):
                 pieces_attacking_piece(x, y, piece, global_colour, global_piece_symbol)
@@ -697,7 +716,7 @@ while running:
             fen_index_of_click()
             fen_index_when_released = fen_index_num
             new_attack_on_king(x, y, piece, global_colour, global_piece_symbol, 2, check_piece_symbol)
-            if (x, y) in moves and global_piece_symbol.isalpha() and (not discovered_attack_on_king or (discovered_attack_on_king and block_attack_on_king)):
+            if (x, y) in moves and global_piece_symbol.isalpha() and (not discovered_attack_on_king or (discovered_attack_on_king and (block_attack_on_king or global_piece_symbol.upper() == 'K'))) and safe_square_for_king(x, y, piece, global_colour, global_piece_symbol):
                 if white_turn:
                     if check:
                         check_moves = block_check(start_x, start_y, piece, 'w', global_piece_symbol)
