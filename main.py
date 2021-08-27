@@ -186,6 +186,8 @@ def move(start_index, end_index):
                     count += 1
             else:
                 break
+        if end_index == 1:
+            count += 1
         if count == int(x/100):
             num = int(Game_State_Array[end_index])
             Game_State_Array[end_index] = temp1
@@ -228,8 +230,11 @@ def move(start_index, end_index):
                     num = int(Game_State_Array[end_index])
                     Game_State_Array[end_index] = str(int(x / 100) - count)
                     Game_State_Array.insert(end_index + 1, temp1)
-                    Game_State_Array.insert(end_index + 2, str(num - (int(x / 100) - count + 1)))
-                    surrounding_index_numeric(start_index, end_index, 2)
+                    if (num - (int(x / 100) - count + 1)) > 0:
+                        Game_State_Array.insert(end_index + 2, str(num - (int(x / 100) - count + 1)))
+                        surrounding_index_numeric(start_index, end_index, 2)
+                    else:
+                        surrounding_index_numeric(start_index, end_index, 1)
     else:
         Game_State_Array[end_index] = temp1
         surrounding_index_numeric(start_index, end_index, 0)
@@ -298,18 +303,41 @@ def in_check(x, y, piece, colour, piece_symbol):
 
 def block_check(x, y, piece, colour, piece_symbol):
     moves1 = []
-    moves2 = piece.moves(x, y, colour)
-    temp_piece = search_for_symbol(x, y, check_piece_symbol)
+    if colour == 'w':
+        temp_piece2 = search_for_symbol(x, y, check_piece_symbol.lower())
+        temp_piece4 = search_for_symbol(x, y, check_piece_symbol.upper())
+        moves2 = temp_piece2.moves(x, y, 'b')
+        moves4 = temp_piece4.moves(x, y, 'w')
+    else:
+        temp_piece2 = search_for_symbol(x, y, check_piece_symbol.upper())
+        temp_piece4 = search_for_symbol(x, y, check_piece_symbol.lower())
+        moves2 = temp_piece2.moves(x, y, 'w')
+        moves4 = temp_piece4.moves(x, y, 'b')
     if piece_symbol.upper() != 'K':
         for (i, j) in moves2:
-            moves3 = temp_piece.moves(i, j, colour)
-            if ((check_x, check_y) in moves3) or ((check_x, check_y) == (i, j)):
-                moves1.append((i, j))
+            if coordinates[x // 100][y // 100] != coordinates[check_y//100][check_x//100]: #not capturing checking piece directly
+                if coordinates[j//100][i//100].upper() == 'K':
+                    if i < x and j < y and x < check_x and y < check_y:
+                        moves1.append((x, y))
+                    elif i > x and j > y and x > check_x and y > check_y:
+                        moves1.append((x, y))
+                    elif i < x and j > y and x < check_x and y > check_y:
+                        moves1.append((x, y))
+                    elif i > x and j < y and x > check_x and y < check_y:
+                        moves1.append((x, y))
+                    elif i > x and j == y and x > check_x  and y == check_y:
+                        moves1.append((x, y))
+                    elif i < x and j == y and x < check_x and y == check_y:
+                        moves1.append((x, y))
+                    elif i == x and j > y and x == check_x and y > check_y:
+                        moves1.append((x, y))
+                    elif i == x and j < y and x == check_x and y < check_y:
+                        moves1.append((x, y))
+        if coordinates[y // 100][x // 100] == coordinates[check_y//100][check_x//100]:
+            moves1.append((x, y))
     elif piece_symbol.upper() == 'K':
-        for (i, j) in moves2:
-            moves3 = temp_piece.moves(i, j, colour)
-            if (check_x, check_y) not in moves3:
-                moves1.append((i, j))
+        if (check_x, check_y) not in moves4:
+                moves1.append((x, y))
     return moves1
 
 def path_from_piece_to_king(x, y, piece, colour, piece_symbol):
@@ -334,7 +362,7 @@ def path_from_piece_to_king(x, y, piece, colour, piece_symbol):
 #if a piece is going to move, then first find the pieces that are attacking that piece (by setting that piece equal to each of the piece types and doing something similar to the check fn) then after the piece moves run the moves of the attackers and if 'k' (or 'k') is on the coord within moves then check is true
 #need to add symbol as an input for moves method for eac piece class
 #
-def pieces_attacking_piece(x, y, piece, colour, piece_symbol):
+def pieces_attacking_blocker_piece(x, y, piece, colour, piece_symbol):
     global coords_of_checking_pieces
     coords_of_checking_pieces = []
     for i in ['R', 'B', 'Q']:
@@ -402,7 +430,7 @@ def new_attack_on_king(x, y, piece, colour, piece_symbol, i: range(1,3), temp_sy
                                         discovered_attack_on_king = True
                                     if i == 2:
                                         block_attack_on_king = True
-                        elif coordinates[b // 100][a // 100].upper() == 'R' or coordinates[b // 100][a // 100].upper() == 'Q':
+                        if coordinates[b // 100][a // 100].upper() == 'R' or coordinates[b // 100][a // 100].upper() == 'Q':
                             if x < a and y == b:  # rook moving left
                                 if c < x and d == y:
                                     if i == 1:
@@ -710,7 +738,7 @@ while running:
                     moves = piece.moves(x, y, global_colour)
                 print(moves)
             if path_from_piece_to_king(x, y, piece, global_colour, global_piece_symbol):
-                pieces_attacking_piece(x, y, piece, global_colour, global_piece_symbol)
+                pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol)
                 new_attack_on_king(x, y, piece, global_colour, global_piece_symbol, 1, 'k')
         if event.type == pg.MOUSEBUTTONUP:
             fen_index_of_click()
@@ -719,7 +747,7 @@ while running:
             if (x, y) in moves and global_piece_symbol.isalpha() and (not discovered_attack_on_king or (discovered_attack_on_king and (block_attack_on_king or global_piece_symbol.upper() == 'K'))) and safe_square_for_king(x, y, piece, global_colour, global_piece_symbol):
                 if white_turn:
                     if check:
-                        check_moves = block_check(start_x, start_y, piece, 'w', global_piece_symbol)
+                        check_moves = block_check(x, y, piece, 'w', global_piece_symbol)
                         if (x, y) in check_moves:
                             move(fen_index_when_clicked, fen_index_when_released)
                             turn_rotater()
@@ -734,8 +762,8 @@ while running:
                         print(check)
                 else:
                     if check:
-                        check_moves = block_check(start_x, start_y, piece, 'b', global_piece_symbol)
-                        if (x, y) in check_moves:
+                        check_moves = block_check(x, y, piece, 'b', global_piece_symbol)
+                        if (x, y) in check_moves and (x, y) in moves:
                             move(fen_index_when_clicked, fen_index_when_released)
                             turn_rotater()
                             change_global_check_coords(x, y)
