@@ -44,6 +44,12 @@ number_of_pieces_giving_check = 0
 coords_of_two_checking_pieces = []
 potential_for_double_check = False
 double_attacked_squares = []
+white_king_not_moved  = True
+white_king_rook_not_moved = True
+white_queen_rook_not_moved = True
+black_king_not_moved = True
+black_king_rook_not_moved = True
+black_queen_rook_not_moved = True
 
 # Board
 board = pg.Surface((cell_size * 8, cell_size * 8))
@@ -115,9 +121,8 @@ def fen_index_of_click():
     fen_index_col = 0
     fen_index_num = 0
     clicked = pg.mouse.get_pressed()[0] # returns (bool, bool, bool). One for each mouse button. Indexing at 0
-    x = int(pg.mouse.get_pos()[0] / 100) * 100  # round down to nearest hundreth
+    x = int(pg.mouse.get_pos()[0] / 100) * 100
     y = int(pg.mouse.get_pos()[1] / 100) * 100
-    # '8/pp6/8/8/8/8/8/8 w KQkq - 0 1'
     for i in Game_State:
         if (x, y) == (fen_index_col, fen_index_row):
             break
@@ -183,7 +188,6 @@ def move(start_index, end_index):
     global Game_State_Array
     temp1 = Game_State_Array[start_index]
     temp2 = Game_State_Array[end_index]
-    #'8/pp6/8/8/8/8/8/8 w KQkq - 0 1'
     if Game_State_Array[end_index].isnumeric() and int(Game_State_Array[end_index]) > 1:
         count = 0
         for i in Game_State_Array[end_index - 1:0:-1]: #for loop that moves back to the slash and checks if the len of that is equal to or greater than x
@@ -522,7 +526,6 @@ def new_attack_on_enemy_king(x, y, piece, colour, piece_symbol):
                                     coords_of_two_checking_pieces.append((a, b))
         return
 
-#x and y will be loaded after first click
 def new_attack_on_own_king(x, y, piece, colour, piece_symbol, i: range(1, 3), temp_symbol):
     #maybe have a global list for pins if a,b leads to discovered_attack_on_king true
     global discovered_attack_on_own_king
@@ -840,6 +843,22 @@ class King(Pieces): # need to add castling
         if x - 1 >= 0 and y + 1 <= 7:
             if (colour == 'w' and coordinates[y + 1][(x - 1)].islower()) or (colour == 'b' and coordinates[y + 1][(x - 1)].isupper()) or (coordinates[y + 1][(x - 1)] == '-'):
                 moves.append(((x*100) - 100, (y*100) + 100))
+        if colour == 'w':
+            if white_king_not_moved == True:
+                    if white_king_rook_not_moved == True:
+                        if coordinates[y][x+1] == '-' and coordinates[y][x+2] == '-':
+                            moves.append(((x*100)+200, (y*100)))
+                    if white_queen_rook_not_moved == True:
+                        if coordinates[y][x - 1] == '-' and coordinates[y][x - 2] == '-':
+                            moves.append(((x * 100) - 200, (y * 100)))
+        elif colour == 'b':
+            if black_king_not_moved == True:
+                    if black_king_rook_not_moved == True:
+                        if coordinates[y][x + 1] == '-' and coordinates[y][x + 2] == '-':
+                            moves.append(((x * 100) + 200, (y * 100)))
+                    if black_queen_rook_not_moved == True:
+                        if coordinates[y][x - 1] == '-' and coordinates[y][x - 2] == '-':
+                            moves.append(((x * 100) - 200, (y * 100)))
         return moves
 
 class Pawn(Pieces):
@@ -860,7 +879,7 @@ class Pawn(Pieces):
             if y - 1 >= 0 and x - 1 >= 0:
                 if coordinates[y - 1][(x - 1)].islower():
                     moves.append(((x * 100) - 100, (y * 100) - 100))
-            #implement en passant
+            #need to implement en passant
         elif colour == 'b':
             if y == 1 and coordinates[3][x] == '-':
                 moves.append(((x * 100), (y * 100) + 200))
@@ -872,7 +891,6 @@ class Pawn(Pieces):
             if y + 1 <= 7 and x - 1 >= 0:
                 if coordinates[y + 1][(x - 1)].isupper():
                     moves.append(((x * 100) - 100, (y * 100) + 100))
-            #implement en passant
         return moves
 
 running = True
@@ -922,7 +940,61 @@ while running:
                 new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 2, check_piece_symbol)
             if (x, y) in moves and global_piece_symbol.isalpha() and (not discovered_attack_on_own_king_after or (discovered_attack_on_own_king and (block_attack_on_king or global_piece_symbol.upper() == 'K'))) and safe_square_for_king(x, y, piece, global_colour, global_piece_symbol):
                 if white_turn:
-                    if check:
+                    if global_piece_symbol == 'K' and start_x + 200 == x and start_y == y:
+                        incremental_move1 = safe_square_for_king(x-100, y, piece, global_colour, global_piece_symbol)
+                        incremental_move2 = safe_square_for_king(x, y, piece, global_colour, global_piece_symbol)
+                        if incremental_move1 and incremental_move2:
+                            counter = -1
+                            for j in Game_State_Array:
+                                counter += 1
+                                if j == 'K':
+                                    break
+                            if not Game_State_Array[counter-1].isalpha():
+                                Game_State_Array[counter-1] = str(int(Game_State_Array[counter-1]) + 1)
+                                Game_State_Array[counter] = 'R'
+                                Game_State_Array[counter + 1] = 'K'
+                                Game_State_Array[counter + 2] = '1'
+                                Game_State = ''.join(str(i) for i in Game_State_Array)
+                                white_king_not_moved = False
+                                white_king_rook_not_moved = False
+                                turn_rotater()
+                            else:
+                                Game_State_Array[counter] = '1'
+                                Game_State_Array[counter+1] = 'R'
+                                Game_State_Array[counter + 2] = 'K'
+                                Game_State_Array.insert(counter + 3, '1')
+                                Game_State = ''.join(str(i) for i in Game_State_Array)
+                                white_king_not_moved = False
+                                white_king_rook_not_moved = False
+                                turn_rotater()
+                    elif global_piece_symbol == 'K' and start_x - 200 == x and start_y == y:
+                        incremental_move1 = safe_square_for_king(x+100, y, piece, global_colour, global_piece_symbol)
+                        incremental_move2 = safe_square_for_king(x, y, piece, global_colour, global_piece_symbol)
+                        if incremental_move1 and incremental_move2:
+                            counter = -1
+                            for j in Game_State_Array:
+                                counter += 1
+                                if j == 'K':
+                                    break
+                            if not Game_State_Array[counter+1].isalpha():
+                                Game_State_Array[counter+1] = str(int(Game_State_Array[counter+1]) + 1)
+                                Game_State_Array[counter] = 'R'
+                                Game_State_Array[counter - 1] = 'K'
+                                Game_State_Array[counter - 2] = '2'
+                                Game_State = ''.join(str(i) for i in Game_State_Array)
+                                white_king_not_moved = False
+                                white_queen_rook_not_moved = False
+                                turn_rotater()
+                            else:
+                                Game_State_Array.insert(counter+1, '1')
+                                Game_State_Array[counter] = 'R'
+                                Game_State_Array[counter - 1] = 'K'
+                                Game_State_Array[counter - 2] = '2'
+                                Game_State = ''.join(str(i) for i in Game_State_Array)
+                                white_king_not_moved = False
+                                white_queen_rook_not_moved = False
+                                turn_rotater()
+                    elif check:
                         if potential_for_double_check:
                             if len(coords_of_two_checking_pieces) == 2:
                                 if global_piece_symbol == 'K':
@@ -932,6 +1004,7 @@ while running:
                                         turn_rotater()
                                         change_global_check_coords(x, y)
                                         potential_for_double_check = False
+                                        white_king_not_moved = False
                         else:
                             check_moves = block_check(x, y, piece, 'w', global_piece_symbol)
                             if (x, y) in check_moves:
@@ -943,6 +1016,12 @@ while running:
                                     new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol)
                                     if not discovered_attack_on_enemy_king:
                                         check = True
+                                if global_piece_symbol == 'R' and start_x == 700 and start_y == 700:
+                                    white_king_rook_not_moved = False
+                                elif global_piece_symbol == 'R' and start_x == 0 and start_y == 700:
+                                    white_queen_rook_not_moved = False
+                                elif global_piece_symbol == 'K' and start_x == 400 and start_y == 700:
+                                    white_king_not_moved = False
                                 print(check)
                     elif global_piece_symbol.isupper():
                         move(fen_index_when_clicked, fen_index_when_released)
@@ -956,9 +1035,70 @@ while running:
                                     number_of_pieces_giving_check = 2
                                     coords_of_two_checking_pieces.append((x, y))
                                 check = True
+                        if global_piece_symbol == 'R' and start_x == 700 and start_y == 700:
+                            white_king_rook_not_moved = False
+                        elif global_piece_symbol == 'R' and start_x == 0 and start_y == 700:
+                            white_queen_rook_not_moved = False
+                        elif global_piece_symbol == 'K' and start_x == 400 and start_y == 700:
+                            white_king_not_moved = False
                         print(check)
+
                 else:
-                    if check:
+                    if global_piece_symbol == 'k' and start_x + 200 == x and start_y == y:
+                        incremental_move1 = safe_square_for_king(x - 100, y, piece, global_colour, global_piece_symbol)
+                        incremental_move2 = safe_square_for_king(x, y, piece, global_colour, global_piece_symbol)
+                        if incremental_move1 and incremental_move2:
+                            counter = -1
+                            for j in Game_State_Array:
+                                counter += 1
+                                if j == 'k':
+                                    break
+                            if not Game_State_Array[counter - 1].isalpha():
+                                Game_State_Array[counter - 1] = str(int(Game_State_Array[counter - 1]) + 1)
+                                Game_State_Array[counter] = 'r'
+                                Game_State_Array[counter + 1] = 'k'
+                                Game_State_Array[counter + 2] = '1'
+                                Game_State = ''.join(str(i) for i in Game_State_Array)
+                                black_king_not_moved = False
+                                black_king_rook_not_moved = False
+                                turn_rotater()
+                            else:
+                                Game_State_Array[counter] = '1'
+                                Game_State_Array[counter + 1] = 'r'
+                                Game_State_Array[counter + 2] = 'k'
+                                Game_State_Array.insert(counter + 3, '1')
+                                Game_State = ''.join(str(i) for i in Game_State_Array)
+                                black_king_not_moved = False
+                                black_king_rook_not_moved = False
+                                turn_rotater()
+                    elif global_piece_symbol == 'k' and start_x - 200 == x and start_y == y:
+                        incremental_move1 = safe_square_for_king(x + 100, y, piece, global_colour, global_piece_symbol)
+                        incremental_move2 = safe_square_for_king(x, y, piece, global_colour, global_piece_symbol)
+                        if incremental_move1 and incremental_move2:
+                            counter = -1
+                            for j in Game_State_Array:
+                                counter += 1
+                                if j == 'k':
+                                    break
+                            if not Game_State_Array[counter + 1].isalpha():
+                                Game_State_Array[counter + 1] = str(int(Game_State_Array[counter + 1]) + 1)
+                                Game_State_Array[counter] = 'r'
+                                Game_State_Array[counter - 1] = 'k'
+                                Game_State_Array[counter - 2] = '2'
+                                Game_State = ''.join(str(i) for i in Game_State_Array)
+                                black_king_not_moved = False
+                                black_queen_rook_not_moved = False
+                                turn_rotater()
+                            else:
+                                Game_State_Array.insert(counter + 1, '1')
+                                Game_State_Array[counter] = 'r'
+                                Game_State_Array[counter - 1] = 'k'
+                                Game_State_Array[counter - 2] = '2'
+                                Game_State = ''.join(str(i) for i in Game_State_Array)
+                                black_king_not_moved = False
+                                black_queen_rook_not_moved = False
+                                turn_rotater()
+                    elif check:
                         if potential_for_double_check:
                             if len(coords_of_two_checking_pieces) == 2:
                                 if global_piece_symbol == 'k':
@@ -968,6 +1108,7 @@ while running:
                                         turn_rotater()
                                         change_global_check_coords(x, y)
                                         potential_for_double_check = False
+                                        black_king_not_moved = False
                         else:
                             check_moves = block_check(x, y, piece, 'b', global_piece_symbol)
                             if (x, y) in check_moves and (x, y) in moves:
@@ -979,6 +1120,12 @@ while running:
                                     new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol)
                                     if not discovered_attack_on_enemy_king:
                                         check = True
+                                if global_piece_symbol == 'r' and start_x == 700 and start_y == 0:
+                                    black_king_rook_not_moved = False
+                                elif global_piece_symbol == 'r' and start_x == 0 and start_y == 0:
+                                    black_queen_rook_not_moved = False
+                                elif global_piece_symbol == 'k' and start_x == 400 and start_y == 0:
+                                    black_king_not_moved = False
                                 print(check)
                     elif global_piece_symbol.islower():
                         move(fen_index_when_clicked, fen_index_when_released)
@@ -992,6 +1139,12 @@ while running:
                                     number_of_pieces_giving_check = 2
                                     coords_of_two_checking_pieces.append((x, y))
                                 check = True
+                        if global_piece_symbol == 'r' and start_x == 700 and start_y == 0:
+                            black_king_rook_not_moved = False
+                        elif global_piece_symbol == 'r' and start_x == 0 and start_y == 0:
+                            black_queen_rook_not_moved = False
+                        elif global_piece_symbol == 'k' and start_x == 400 and start_y == 0:
+                            black_king_not_moved = False
                         print(check)
 
     pg.display.update()
