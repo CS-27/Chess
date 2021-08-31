@@ -27,25 +27,19 @@ start_x = 0
 start_y = 0
 x = 0
 y = 0
-check_x_w = 0
-check_y_w = 0
-check_x_b = 0
-check_y_b = 0
-check_piece_w = 0
-check_piece_b = 0
+check_y = 0
+check_x = 0
+check_piece = 0
 check_colour = 0
-check_piece_symbol_w = 0
-check_piece_symbol_b = 0
-coords_of_enemy_checking_pieces_w = []
-coords_of_enemy_checking_pieces_b = []
-coords_of_actual_enemy_checking_piece_w = []
-coords_of_actual_enemy_checking_piece_b = []
-coords_of_own_checking_pieces_w = []
-coords_of_own_checking_pieces_b = []
-discovered_attack_on_own_king_w = False
+check_piece_symbol = 0
+coords_of_w_potential_checking_pieces = []
+coords_of_b_potential_checking_pieces = []
+coords_of_actual_w_potential_checking_piece = []
+coords_of_actual_b_potential_checking_piece = []
+potential_discovered_attack_on_own_king_w = False
 discovered_attack_on_own_king_after_w = False
 discovered_attack_on_enemy_king_w = False
-discovered_attack_on_own_king_b = False
+potential_discovered_attack_on_own_king_b = False
 discovered_attack_on_own_king_after_b = False
 discovered_attack_on_enemy_king_b = False
 block_attack_on_king_w = False
@@ -54,8 +48,7 @@ global_colour = 0
 global_piece_symbol = 0
 temp_piece = 0
 coords_of_two_checking_pieces = []
-potential_for_double_check_w = False
-potential_for_double_check_b = False
+potential_for_double_check = False
 double_attacked_squares = []
 white_king_not_moved  = True
 white_king_rook_not_moved = True
@@ -330,17 +323,11 @@ def location():
             break
     return
 
-def change_global_check_coords(x, y, colour):
-    global check_x_w
-    global check_y_w
-    global check_x_b
-    global check_y_b
-    if colour == 'w':
-        check_x_w = x
-        check_y_w = y
-    else:
-        check_x_b = x
-        check_y_b = y
+def change_global_check_coords(x, y):
+    global check_x
+    global check_y
+    check_x = x
+    check_y = y
     return
 
 def change_global_start_coords(x, y):
@@ -352,59 +339,34 @@ def change_global_start_coords(x, y):
 
 def in_check(x, y, piece, colour, piece_symbol):
     global check
-    global check_piece_w
-    global check_piece_b
+    global check_piece
     global check_colour
-    global check_piece_symbol_w
-    global check_piece_symbol_b
+    global check_piece_symbol
     check = False
-    check_colour = colour
-    if colour == 'w':
-        check_piece_symbol_w = piece_symbol
-        check_piece_w = search_for_symbol(check_x_w, check_y_w, check_piece_symbol_w)
-        moves = check_piece_w.moves(check_x_w, check_y_w, colour)
-    else:
-        check_piece_symbol_b = piece_symbol
-        check_piece_b = search_for_symbol(check_x_b, check_y_b, check_piece_symbol_b)
-        moves = check_piece_b.moves(check_x_b, check_y_b, colour)
+    temp_piece = search_for_symbol(x, y, piece_symbol)
+    moves = temp_piece.moves(x, y, colour)
     for (i, j) in moves:
-        if colour == 'w':
-            if coordinates[j//100][i//100] == 'k':
+        if (colour == 'w' and coordinates[j//100][i//100] == 'k') or (colour == 'b' and coordinates[j//100][i//100] == 'K'):
                 check = True
-                break
-        elif colour == 'b':
-            if coordinates[j//100][i//100] == 'K':
-                check = True
+                check_colour = colour
+                check_piece = temp_piece
+                check_piece_symbol = piece_symbol
+                check_x = x
+                check_y = y
                 break
     return
 
 def block_check(x, y, piece, colour, piece_symbol):
     moves1 = []
-    if colour == 'w':
-        check_piece_symbol = check_piece_symbol_b
-    else:
-        check_piece_symbol = check_piece_symbol_w
     if not isinstance(check_piece_symbol, int):
-        c = check_piece_symbol
-        if colour == 'w':
-            d = check_x_b
-            e = check_y_b
-        else:
-            d = check_x_w
-            e = check_y_w
+        c, d, e = check_piece_symbol, check_x, check_y
     else:
         if colour == 'w':
-            for (a, b) in coords_of_actual_enemy_checking_piece_w:
-                print(coords_of_actual_enemy_checking_piece_w)
-                c = coordinates[b//100][a//100]
-                d = a
-                e = b
+            for (a, b) in coords_of_b_potential_checking_pieces:
+                c, d, e = coordinates[b//100][a//100], a, b
         else:
-            for (a, b) in coords_of_actual_enemy_checking_piece_b:
-                print(coords_of_actual_enemy_checking_piece_b)
-                c = coordinates[b//100][a//100]
-                d = a
-                e = b
+            for (a, b) in coords_of_w_potential_checking_pieces:
+                c, d, e = coordinates[b//100][a//100], a, b
     if colour == 'w':
         temp_piece2 = search_for_symbol(x, y, c.lower())
         temp_piece4 = search_for_symbol(x, y, c.upper())
@@ -442,91 +404,72 @@ def block_check(x, y, piece, colour, piece_symbol):
                 moves1.append((x, y))
     return moves1
 
-def path_from_piece_to_own_king(x, y, piece, colour, piece_symbol):
-    global discovered_attack_on_own_king_w
-    global discovered_attack_on_own_king_b
-    if colour == 'w':
-        discovered_attack_on_own_king_w = False
-    else:
-        discovered_attack_on_own_king_b = False
-    if colour == 'w':
-        temp_piece = search_for_symbol(x, y, 'q')
-        temp_moves = temp_piece.moves(x, y, 'b')
-        for (a, b) in temp_moves:
-            if coordinates[b // 100][a // 100] == 'K':
-                return True
-    elif colour == 'b':
-        temp_piece = search_for_symbol(x, y, 'Q')
-        temp_moves = temp_piece.moves(x, y, 'w')
-        for (a, b) in temp_moves:
-            if coordinates[b // 100][a // 100] == 'k':
-                return True
-    else:
-        return False
-
-def path_from_piece_to_enemy_king(x, y, piece, colour, piece_symbol):
+def path_from_piece_to_king(x, y, piece, colour, piece_symbol, i):
+    global potential_discovered_attack_on_own_king_w
+    global potential_discovered_attack_on_own_king_b
     global discovered_attack_on_enemy_king_w
     global discovered_attack_on_enemy_king_b
     if colour == 'w':
-        discovered_attack_on_enemy_king_w = False
-    else:
-        discovered_attack_on_enemy_king_b = False
-    if colour == 'w':
-        temp_piece = search_for_symbol(x, y, 'Q')
-        temp_moves = temp_piece.moves(x, y, 'w')
+        if i == 'own':
+            potential_discovered_attack_on_own_king_w = False
+            q, c, k = 'q', 'b', 'K'
+        elif i == 'enemy':
+            discovered_attack_on_enemy_king_w = False
+            q, c, k = 'Q', 'w', 'k'
+        temp_piece = search_for_symbol(x, y, q)
+        temp_moves = temp_piece.moves(x, y, c)
         for (a, b) in temp_moves:
-            if coordinates[b // 100][a // 100] == 'k':
-                return True
-    elif colour == 'b':
-        temp_piece = search_for_symbol(x, y, 'q')
-        temp_moves = temp_piece.moves(x, y, 'b')
-        for (a, b) in temp_moves:
-            if coordinates[b // 100][a // 100] == 'K':
+            if coordinates[b // 100][a // 100] == k:
                 return True
     else:
-        return False
+        if i == 'own':
+            potential_discovered_attack_on_own_king_b = False
+            q, c, k = 'Q', 'w', 'k'
+        elif i == 'enemy':
+            discovered_attack_on_enemy_king_b = False
+            q, c, k = 'q', 'b', 'K'
+        temp_piece = search_for_symbol(x, y, q)
+        temp_moves = temp_piece.moves(x, y, c)
+        for (a, b) in temp_moves:
+            if coordinates[b // 100][a // 100] == k:
+                return True
+    return False
 
-def own_pieces_attacking_blocker_piece(x, y, piece, colour, piece_symbol):
-    global coords_of_own_checking_pieces_w, coords_of_own_checking_pieces_b
+def pieces_attacking_blocker_piece(x, y, piece, colour, piece_symbol, k):
+    global coords_of_w_potential_checking_pieces
+    global coords_of_b_potential_checking_pieces
     if colour == 'w':
-        coords_of_own_checking_pieces_w.clear()
+        if k == 'own':
+            coords_of_w_potential_checking_pieces.clear()
+            lst, c = ['r', 'b', 'q'], 'b'
+        elif k == 'enemy':
+            coords_of_b_potential_checking_pieces.clear()
+            lst, c = ['R', 'B', 'Q'], 'w'
+        for i in lst:
+            temp_piece = search_for_symbol(x, y, i)
+            temp_moves = temp_piece.moves(x, y, c)
+            for (a, b) in temp_moves:
+                if coordinates[b // 100][a // 100] == i.swapcase():
+                    if c == 'b':
+                        coords_of_w_potential_checking_pieces.append((a, b))
+                    else:
+                        coords_of_b_potential_checking_pieces.append((a, b))
     else:
-        coords_of_own_checking_pieces_b.clear()
-    for i in ['R', 'B', 'Q']:
-        if colour == 'w':
-            temp_piece = search_for_symbol(x, y, i.lower())
-            temp_moves = temp_piece.moves(x, y, 'b')
+        if k == 'own':
+            coords_of_b_potential_checking_pieces.clear()
+            lst, c = ['R', 'B', 'Q'], 'w'
+        elif k == 'enemy':
+            coords_of_w_potential_checking_pieces.clear()
+            lst, c = ['r', 'b', 'q'], 'b'
+        for i in lst:
+            temp_piece = search_for_symbol(x, y, i)
+            temp_moves = temp_piece.moves(x, y, c)
             for (a, b) in temp_moves:
-                if coordinates[b // 100][a // 100] == i.upper():
-                    coords_of_own_checking_pieces_w.append((a, b))
-        elif colour == 'b':
-            temp_piece = search_for_symbol(x, y, i.upper())
-            temp_moves = temp_piece.moves(x, y, 'w')
-            for (a, b) in temp_moves:
-                if coordinates[b // 100][a // 100] == i.lower():
-                    coords_of_own_checking_pieces_b.append((a, b))
-    return
-
-
-def enemy_pieces_attacking_blocker_piece(x, y, piece, colour, piece_symbol):
-    global coords_of_enemy_checking_pieces_w, coords_of_enemy_checking_pieces_b
-    if colour == 'w':
-        coords_of_enemy_checking_pieces_w = []
-    else:
-        coords_of_enemy_checking_pieces_b = []
-    for i in ['R', 'B', 'Q']:
-        if colour == 'w':
-            temp_piece = search_for_symbol(x, y, i.upper())
-            temp_moves = temp_piece.moves(x, y, colour)
-            for (a, b) in temp_moves:
-                if coordinates[b//100][a//100] == i.lower():
-                    coords_of_enemy_checking_pieces_w.append((a, b))
-        elif colour == 'b':
-            temp_piece = search_for_symbol(x, y, i.lower())
-            temp_moves = temp_piece.moves(x, y, colour)
-            for (a, b) in temp_moves:
-                if coordinates[b//100][a//100] == i.upper():
-                    coords_of_enemy_checking_pieces_b.append((a, b))
+                if coordinates[b // 100][a // 100] == i.swapcase():
+                    if c == 'w':
+                        coords_of_b_potential_checking_pieces.append((a, b))
+                    else:
+                        coords_of_w_potential_checking_pieces.append((a, b))
     return
 
 def new_attack_on_enemy_king(x, y, piece, colour, piece_symbol, coords_of_own_checking_pieces):
@@ -539,9 +482,7 @@ def new_attack_on_enemy_king(x, y, piece, colour, piece_symbol, coords_of_own_ch
         discovered_attack_on_enemy_king_w = False
     else:
         discovered_attack_on_enemy_king_b = False
-    for e in coords_of_own_checking_pieces:
-        count += 1
-    if count > 0:
+    if len(coords_of_own_checking_pieces) >= 1:
         for (a, b) in coords_of_own_checking_pieces:
             temp_piece1 = search_for_symbol(x, y, coordinates[b // 100][a // 100])
             if colour == 'w':
@@ -622,29 +563,29 @@ def new_attack_on_enemy_king(x, y, piece, colour, piece_symbol, coords_of_own_ch
 
 def new_attack_on_own_king(x, y, piece, colour, piece_symbol, i: range(1, 3), temp_symbol, discovered_attack_on_own_king, block_attack_on_king, coords_of_actual_enemy_checking_piece):
     #maybe have a global list for pins if a,b leads to discovered_attack_on_king true
-    global discovered_attack_on_own_king_w
-    global discovered_attack_on_own_king_b
+    global potential_discovered_attack_on_own_king_w
+    global potential_discovered_attack_on_own_king_b
     global block_attack_on_king_w
     global block_attack_on_king_b
-    global coords_of_actual_enemy_checking_piece_w
-    global coords_of_actual_enemy_checking_piece_b
+    global coords_of_actual_b_potential_checking_piece
+    global coords_of_actual_w_potential_checking_piece
     coords_of_actual_enemy_checking_piece = []
     count = 0
     if colour == 'w':
         if i == 1:
-            discovered_attack_on_own_king_w = False
+            potential_discovered_attack_on_own_king_w = False
         if i == 2:
             block_attack_on_king_w = False
-        coords_of_enemy_checking_pieces = coords_of_enemy_checking_pieces_w
-        for e in coords_of_enemy_checking_pieces_w:
+        coords_of_enemy_checking_pieces = coords_of_b_potential_checking_pieces
+        for e in coords_of_b_potential_checking_pieces:
             count += 1
     else:
         if i == 1:
-            discovered_attack_on_own_king_b = False
+            potential_discovered_attack_on_own_king_b = False
         if i == 2:
             block_attack_on_king_b = False
-        coords_of_enemy_checking_pieces = coords_of_enemy_checking_pieces_b
-        for e in coords_of_enemy_checking_pieces_b:
+        coords_of_enemy_checking_pieces = coords_of_w_potential_checking_pieces
+        for e in coords_of_w_potential_checking_pieces:
             count += 1
     if count > 0:
         for (a, b) in coords_of_enemy_checking_pieces:
@@ -662,115 +603,115 @@ def new_attack_on_own_king(x, y, piece, colour, piece_symbol, i: range(1, 3), te
                                 if c < x and d < y:
                                     if colour == 'w':
                                         if i == 1:
-                                            discovered_attack_on_own_king_w = True
+                                            potential_discovered_attack_on_own_king_w = True
                                         if i == 2:
                                             block_attack_on_king_w = True
-                                        coords_of_actual_enemy_checking_piece_w.append((a, b))
+                                        coords_of_actual_b_potential_checking_piece.append((a, b))
                                     else:
                                         if i == 1:
-                                            discovered_attack_on_own_king_b = True
+                                            potential_discovered_attack_on_own_king_b = True
                                         if i == 2:
                                             block_attack_on_king_b = True
-                                        coords_of_actual_enemy_checking_piece_b.append((a, b))
+                                        coords_of_actual_w_potential_checking_piece.append((a, b))
                             elif x > a and y < b:  # bishop moving up and right
                                 if c > x and d < y:
                                     if colour == 'w':
                                         if i == 1:
-                                            discovered_attack_on_own_king_w = True
+                                            potential_discovered_attack_on_own_king_w = True
                                         if i == 2:
                                             block_attack_on_king_w = True
-                                        coords_of_actual_enemy_checking_piece_w.append((a, b))
+                                        coords_of_actual_b_potential_checking_piece.append((a, b))
                                     else:
                                         if i == 1:
-                                            discovered_attack_on_own_king_b = True
+                                            potential_discovered_attack_on_own_king_b = True
                                         if i == 2:
                                             block_attack_on_king_b = True
-                                        coords_of_actual_enemy_checking_piece_b.append((a, b))
+                                        coords_of_actual_w_potential_checking_piece.append((a, b))
                             elif x < a and y > b:  # bishop moving down and left
                                 if c < x and d > y:
                                     if colour == 'w':
                                         if i == 1:
-                                            discovered_attack_on_own_king_w = True
+                                            potential_discovered_attack_on_own_king_w = True
                                         if i == 2:
                                             block_attack_on_king_w = True
-                                        coords_of_actual_enemy_checking_piece_w.append((a, b))
+                                        coords_of_actual_b_potential_checking_piece.append((a, b))
                                     else:
                                         if i == 1:
-                                            discovered_attack_on_own_king_b = True
+                                            potential_discovered_attack_on_own_king_b = True
                                         if i == 2:
                                             block_attack_on_king_b = True
-                                        coords_of_actual_enemy_checking_piece_b.append((a, b))
+                                        coords_of_actual_w_potential_checking_piece.append((a, b))
                             elif x > a and y > b:  # bishop moving down and right
                                 if c > x and d > y:
                                     if colour == 'w':
                                         if i == 1:
-                                            discovered_attack_on_own_king_w = True
+                                            potential_discovered_attack_on_own_king_w = True
                                         if i == 2:
                                             block_attack_on_king_w = True
-                                        coords_of_actual_enemy_checking_piece_w.append((a, b))
+                                        coords_of_actual_b_potential_checking_piece.append((a, b))
                                     else:
                                         if i == 1:
-                                            discovered_attack_on_own_king_b = True
+                                            potential_discovered_attack_on_own_king_b = True
                                         if i == 2:
                                             block_attack_on_king_b = True
-                                        coords_of_actual_enemy_checking_piece_b.append((a, b))
+                                        coords_of_actual_w_potential_checking_piece.append((a, b))
                         if coordinates[b // 100][a // 100].upper() == 'R' or coordinates[b // 100][a // 100].upper() == 'Q':
                             if x < a and y == b:  # rook moving left
                                 if c < x and d == y:
                                     if colour == 'w':
                                         if i == 1:
-                                            discovered_attack_on_own_king_w = True
+                                            potential_discovered_attack_on_own_king_w = True
                                         if i == 2:
                                             block_attack_on_king_w = True
-                                        coords_of_actual_enemy_checking_piece_w.append((a, b))
+                                        coords_of_actual_b_potential_checking_piece.append((a, b))
                                     else:
                                         if i == 1:
-                                            discovered_attack_on_own_king_b = True
+                                            potential_discovered_attack_on_own_king_b = True
                                         if i == 2:
                                             block_attack_on_king_b = True
-                                        coords_of_actual_enemy_checking_piece_b.append((a, b))
+                                        coords_of_actual_w_potential_checking_piece.append((a, b))
                             elif x > a and y == b:  # rook moving right
                                 if c > x and d == y:
                                     if colour == 'w':
                                         if i == 1:
-                                            discovered_attack_on_own_king_w = True
+                                            potential_discovered_attack_on_own_king_w = True
                                         if i == 2:
                                             block_attack_on_king_w = True
-                                        coords_of_actual_enemy_checking_piece_w.append((a, b))
+                                        coords_of_actual_b_potential_checking_piece.append((a, b))
                                     else:
                                         if i == 1:
-                                            discovered_attack_on_own_king_b = True
+                                            potential_discovered_attack_on_own_king_b = True
                                         if i == 2:
                                             block_attack_on_king_b = True
-                                        coords_of_actual_enemy_checking_piece_b.append((a, b))
+                                        coords_of_actual_w_potential_checking_piece.append((a, b))
                             elif y < b and x == a:  # rook moving up
                                 if d < y and c == x:
                                     if colour == 'w':
                                         if i == 1:
-                                            discovered_attack_on_own_king_w = True
+                                            potential_discovered_attack_on_own_king_w = True
                                         if i == 2:
                                             block_attack_on_king_w = True
-                                        coords_of_actual_enemy_checking_piece_w.append((a, b))
+                                        coords_of_actual_b_potential_checking_piece.append((a, b))
                                     else:
                                         if i == 1:
-                                            discovered_attack_on_own_king_b = True
+                                            potential_discovered_attack_on_own_king_b = True
                                         if i == 2:
                                             block_attack_on_king_b = True
-                                        coords_of_actual_enemy_checking_piece_b.append((a, b))
+                                        coords_of_actual_w_potential_checking_piece.append((a, b))
                             elif y > b and x == a:  # rook moving down
                                 if d > y and c == x:
                                     if colour == 'w':
                                         if i == 1:
-                                            discovered_attack_on_own_king_w = True
+                                            potential_discovered_attack_on_own_king_w = True
                                         if i == 2:
                                             block_attack_on_king_w = True
-                                        coords_of_actual_enemy_checking_piece_w.append((a, b))
+                                        coords_of_actual_b_potential_checking_piece.append((a, b))
                                     else:
                                         if i == 1:
-                                            discovered_attack_on_own_king_b = True
+                                            potential_discovered_attack_on_own_king_b = True
                                         if i == 2:
                                             block_attack_on_king_b = True
-                                        coords_of_actual_enemy_checking_piece_b.append((a, b))
+                                        coords_of_actual_w_potential_checking_piece.append((a, b))
         return
 
 def safe_square_for_king(x, y, piece, colour, piece_symbol):
@@ -1169,63 +1110,63 @@ while running:
                     global_colour = 'b'
                 change_global_start_coords(x, y)
                 location()
-                print(coordinates)
                 piece = search_for_symbol(x, y, global_piece_symbol)
                 if not isinstance(piece, int):
                     moves = piece.moves(x, y, global_colour)
                 if global_colour == 'w':
                     discovered_attack_on_own_king_after_w = False
-                    if path_from_piece_to_own_king(x, y, piece, global_colour, global_piece_symbol):
-                        enemy_pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol)
-                        new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 1, 'k', discovered_attack_on_own_king_w, block_attack_on_king_w, coords_of_actual_enemy_checking_piece_w)
-                    if path_from_piece_to_enemy_king(x, y, piece, global_colour, global_piece_symbol):
-                        own_pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol)
-                        new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol, coords_of_own_checking_pieces_w)
+                    if path_from_piece_to_king(x, y, piece, global_colour, global_piece_symbol, 'own'):
+                        pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol, 'enemy')
+                        new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 1, 'k', potential_discovered_attack_on_own_king_w, block_attack_on_king_w, coords_of_actual_b_potential_checking_piece)
+                    if path_from_piece_to_king(x, y, piece, global_colour, global_piece_symbol, 'enemy'):
+                        pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol, 'own')
+                        new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol, coords_of_w_potential_checking_pieces)
                         if discovered_attack_on_enemy_king_w:
-                            potential_for_double_check_w = True
+                            potential_for_double_check = True
                 else:
                     discovered_attack_on_own_king_after_b = False
-                    if path_from_piece_to_own_king(x, y, piece, global_colour, global_piece_symbol):
-                        enemy_pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol)
-                        new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 1, 'k', discovered_attack_on_own_king_b, block_attack_on_king_b, coords_of_actual_enemy_checking_piece_b)
-                    if path_from_piece_to_enemy_king(x, y, piece, global_colour, global_piece_symbol):
-                        own_pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol)
+                    if path_from_piece_to_king(x, y, piece, global_colour, global_piece_symbol, 'own'):
+                        pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol, 'enemy')
+                        new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 1, 'k', potential_discovered_attack_on_own_king_b, block_attack_on_king_b, coords_of_actual_w_potential_checking_piece)
+                    if path_from_piece_to_king(x, y, piece, global_colour, global_piece_symbol, 'enemy'):
+                        pieces_attacking_blocker_piece(x, y, piece, global_colour, global_piece_symbol, 'own')
                         new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol, coords_of_own_checking_pieces_b)
                         if discovered_attack_on_enemy_king_b:
-                            potential_for_double_check_b = True
+                            potential_for_double_check = True
         if event.type == pg.MOUSEBUTTONUP:
             fen_index_of_click()
             fen_index_when_released = fen_index_num
             if global_colour == 'w':
                 if white_turn:
-                    if discovered_attack_on_own_king_w:
+                    if potential_discovered_attack_on_own_king_w:
                         blocking_moves = block_check(x, y, piece, global_colour, global_piece_symbol)
                         if (x, y) not in blocking_moves:
                             discovered_attack_on_own_king_after_w = True
-                    if not isinstance(check_piece_symbol_w, int):
-                        new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 2, check_piece_symbol_w, discovered_attack_on_own_king_w, block_attack_on_king_w, coords_of_actual_enemy_checking_piece_w)
-                    if (x, y) in moves and global_piece_symbol.isalpha() and (not discovered_attack_on_own_king_after_w or (discovered_attack_on_own_king_w and (block_attack_on_king_w or global_piece_symbol.upper() == 'K'))) and safe_square_for_king(x, y, piece, global_colour, global_piece_symbol):
+                    if not isinstance(check_piece_symbol, int):
+                        new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 2, check_piece_symbol, potential_discovered_attack_on_own_king_w, block_attack_on_king_w, coords_of_actual_b_potential_checking_piece)
+                    if (x, y) in moves and global_piece_symbol.isalpha() and (not discovered_attack_on_own_king_after_w or (potential_discovered_attack_on_own_king_w and (block_attack_on_king_w or global_piece_symbol.upper() == 'K'))) and safe_square_for_king(x, y, piece, global_colour, global_piece_symbol):
                         if (global_piece_symbol == 'K' and start_x + 200 == x and start_y == y) or (global_piece_symbol == 'K' and start_x - 200 == x and start_y == y):
                             castling(x, y, white_king_not_moved, white_king_rook_not_moved, white_queen_rook_not_moved, global_colour, global_piece_symbol, piece)
                         elif check:
-                            if potential_for_double_check_w and len(coords_of_two_checking_pieces) == 2:
-                                if global_piece_symbol == 'K':
-                                    king_moves_if_double_check(x, y, piece, global_colour, global_piece_symbol, coords_of_two_checking_pieces)
-                                    if (x, y) not in double_attacked_squares:
-                                        change_global_check_coords(x, y, global_colour)
-                                        move(fen_index_when_clicked, fen_index_when_released)
-                                        turn_rotater()
-                                        potential_for_double_check_w = False
-                                        white_king_not_moved = False
-                            else:
+                            if potential_for_double_check:
+                                potential_for_double_check = False
+                                if len(coords_of_two_checking_pieces) == 2:
+                                    if global_piece_symbol == 'K':
+                                        king_moves_if_double_check(x, y, piece, global_colour, global_piece_symbol, coords_of_two_checking_pieces)
+                                        if (x, y) not in double_attacked_squares:
+                                            change_global_check_coords(x, y)
+                                            move(fen_index_when_clicked, fen_index_when_released)
+                                            turn_rotater()
+                                            white_king_not_moved = False
+                            if len(coords_of_two_checking_pieces) != 2:
                                 check_moves = block_check(x, y, piece, 'w', global_piece_symbol)
                                 if (x, y) in check_moves:
-                                    change_global_check_coords(x, y, global_colour)
+                                    change_global_check_coords(x, y)
                                     move(fen_index_when_clicked, fen_index_when_released)
                                     turn_rotater()
                                     in_check(x, y, piece, 'w', global_piece_symbol)
                                     if discovered_attack_on_enemy_king_w:
-                                        new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol, coords_of_own_checking_pieces_w)
+                                        new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol, coords_of_w_potential_checking_pieces)
                                         if not discovered_attack_on_enemy_king_w:
                                             check = True
                                     if global_piece_symbol == 'R' and start_x == 700 and start_y == 700:
@@ -1236,18 +1177,18 @@ while running:
                                         white_king_not_moved = False
                                     print(check)
                         elif global_piece_symbol.isupper():
-                            change_global_check_coords(x, y, global_colour)
+                            change_global_check_coords(x, y)
                             move(fen_index_when_clicked, fen_index_when_released)
                             in_check(x, y, piece, 'w', global_piece_symbol)
                             if discovered_attack_on_enemy_king_w:
-                                new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol, coords_of_own_checking_pieces_w)
+                                new_attack_on_enemy_king(x, y, piece, global_colour, global_piece_symbol, coords_of_w_potential_checking_pieces)
                                 if not discovered_attack_on_enemy_king_w:
                                     if check:
                                         coords_of_two_checking_pieces.append((x, y))
                                     else:
-                                        change_global_check_coords(coords_of_own_checking_pieces_w[0][0], coords_of_own_checking_pieces_w[0][1], global_colour)
-                                        temp_piece = search_for_symbol(check_x_w, check_y_w, coordinates[check_y_w//100][check_x_w//100])
-                                        in_check(check_x_w, check_y_w, temp_piece, global_colour, coordinates[check_y_w//100][check_x_w//100])
+                                        change_global_check_coords(coords_of_w_potential_checking_pieces[0][0], coords_of_w_potential_checking_pieces[0][1])
+                                        temp_piece = search_for_symbol(check_x, check_y, coordinates[check_y//100][check_x//100])
+                                        in_check(check_x, check_y, temp_piece, global_colour, coordinates[check_y//100][check_x//100])
                                         check = True
                             if global_piece_symbol == 'R' and start_x == 700 and start_y == 700:
                                 white_king_rook_not_moved = False
@@ -1259,29 +1200,30 @@ while running:
                             print(check)
             elif global_colour == 'b':
                 if not white_turn:
-                    if discovered_attack_on_own_king_b:
+                    if potential_discovered_attack_on_own_king_b:
                         blocking_moves = block_check(x, y, piece, global_colour, global_piece_symbol)
                         if (x, y) not in blocking_moves:
                             discovered_attack_on_own_king_after_b = True
-                    if not isinstance(check_piece_symbol_b, int):
-                        new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 2, check_piece_symbol_b, discovered_attack_on_own_king_b, block_attack_on_king_b, coords_of_actual_enemy_checking_piece_b)
-                    if (x, y) in moves and global_piece_symbol.isalpha() and (not discovered_attack_on_own_king_after_b or (discovered_attack_on_own_king_b and (block_attack_on_king_b or global_piece_symbol.upper() == 'K'))) and safe_square_for_king(x, y, piece, global_colour, global_piece_symbol):
+                    if not isinstance(check_piece_symbol, int):
+                        new_attack_on_own_king(x, y, piece, global_colour, global_piece_symbol, 2, check_piece_symbol, potential_discovered_attack_on_own_king_b, block_attack_on_king_b, coords_of_actual_w_potential_checking_piece)
+                    if (x, y) in moves and global_piece_symbol.isalpha() and (not discovered_attack_on_own_king_after_b or (potential_discovered_attack_on_own_king_b and (block_attack_on_king_b or global_piece_symbol.upper() == 'K'))) and safe_square_for_king(x, y, piece, global_colour, global_piece_symbol):
                         if (global_piece_symbol == 'k' and start_x + 200 == x and start_y == y) or (global_piece_symbol == 'k' and start_x - 200 == x and start_y == y):
                             castling(x, y, black_king_not_moved, black_king_rook_not_moved, black_queen_rook_not_moved, global_colour, global_piece_symbol, piece)
                         elif check:
-                            if potential_for_double_check_b and len(coords_of_two_checking_pieces_b) == 2:
-                                if global_piece_symbol == 'k':
-                                    king_moves_if_double_check(x, y, piece, global_colour, global_piece_symbol)
-                                    if (x, y) not in double_attacked_squares:
-                                        change_global_check_coords(x, y, global_colour)
-                                        move(fen_index_when_clicked, fen_index_when_released)
-                                        turn_rotater()
-                                        potential_for_double_check_b = False
-                                        black_king_not_moved = False
-                            else:
+                            if potential_for_double_check:
+                                potential_for_double_check = False
+                                if len(coords_of_two_checking_pieces) == 2:
+                                    if global_piece_symbol == 'k':
+                                        king_moves_if_double_check(x, y, piece, global_colour, global_piece_symbol)
+                                        if (x, y) not in double_attacked_squares:
+                                            change_global_check_coords(x, y)
+                                            move(fen_index_when_clicked, fen_index_when_released)
+                                            turn_rotater()
+                                            black_king_not_moved = False
+                            if len(coords_of_two_checking_pieces) != 2:
                                 check_moves = block_check(x, y, piece, 'b', global_piece_symbol)
                                 if (x, y) in check_moves and (x, y) in moves:
-                                    change_global_check_coords(x, y, global_colour)
+                                    change_global_check_coords(x, y)
                                     move(fen_index_when_clicked, fen_index_when_released)
                                     turn_rotater()
                                     in_check(x, y, piece, 'b', global_piece_symbol)
@@ -1297,7 +1239,7 @@ while running:
                                         black_king_not_moved = False
                                     print(check)
                         elif global_piece_symbol.islower():
-                            change_global_check_coords(x, y, global_colour)
+                            change_global_check_coords(x, y)
                             move(fen_index_when_clicked, fen_index_when_released)
                             in_check(x, y, piece, 'b', global_piece_symbol)
                             if discovered_attack_on_enemy_king_b:
@@ -1306,9 +1248,9 @@ while running:
                                     if check:
                                         coords_of_two_checking_pieces_b.append((x, y))
                                     else:
-                                        change_global_check_coords(coords_of_own_checking_pieces_b[0][0], coords_of_own_checking_pieces_b[0][1], global_colour)
-                                        temp_piece_ = search_for_symbol(check_x_b, check_y_b, coordinates[check_y_b//100][check_x_b//100])
-                                        in_check(check_x_b, check_y_b, temp_piece_, global_colour, coordinates[check_y_b//100][check_x_b//100])
+                                        change_global_check_coords(coords_of_own_checking_pieces_b[0][0], coords_of_own_checking_pieces_b[0][1])
+                                        temp_piece_ = search_for_symbol(check_x, check_y, coordinates[check_y//100][check_x//100])
+                                        in_check(check_x, check_y, temp_piece_, global_colour, coordinates[check_y//100][check_x//100])
                                         check = True
                             if global_piece_symbol == 'r' and start_x == 700 and start_y == 0:
                                 black_king_rook_not_moved = False
