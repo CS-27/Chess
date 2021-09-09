@@ -186,7 +186,7 @@ def move(start_index, end_index):
                 break
         if slash == False:
             first_obj = Game_State_Array[0]
-            if isinstance(int(first_obj), int):
+            if first_obj.isnumeric():
                 count += int(first_obj)
             else:
                 count += 1
@@ -354,6 +354,25 @@ def in_check(x, y, piece, colour, piece_symbol):
                 break
     return
 
+def block_check_helper2(i, j, x, y, d, e):
+    if i < x and j < y and x < d and y < e:
+        return False
+    elif i > x and j > y and x > d and y > e:
+        return False
+    elif i < x and j > y and x < d and y > e:
+        return False
+    elif i > x and j < y and x > d and y < e:
+        return False
+    elif i > x and j == y and x > d and y == e:
+        return False
+    elif i < x and j == y and x < d and y == e:
+        return False
+    elif i == x and j > y and x == d and y > e:
+        return False
+    elif i == x and j < y and x == d and y < e:
+        return False
+    return True
+
 def block_check_helper(x, y, piece_symbol, colour, c, d, e):
     moves1 = []
     moves2 = []
@@ -363,12 +382,13 @@ def block_check_helper(x, y, piece_symbol, colour, c, d, e):
         moves2 = temp_piece2.moves(x, y, 'b')
         moves4 = temp_piece4.moves(x, y, 'w')
     else:
-        temp_piece2 = search_for_symbol(x, y, c.upper())
-        temp_piece4 = search_for_symbol(x, y, c.lower())
-        moves2 = temp_piece2.moves(x, y, 'w')
-        moves4 = temp_piece4.moves(x, y, 'b')
+        if not isinstance(c, int):
+            temp_piece2 = search_for_symbol(x, y, c.upper())
+            temp_piece4 = search_for_symbol(x, y, c.lower())
+            moves2 = temp_piece2.moves(x, y, 'w')
+            moves4 = temp_piece4.moves(x, y, 'b')
     if piece_symbol.upper() == 'K':
-        if len(moves4) >= 1 and (d, e) not in moves4:
+        if len(moves4) >= 1 and (d, e) not in moves4 and block_check_helper2(x, y, start_x, start_y, d, e):
             moves1.append((x, y))
         elif len(moves4) < 1 and coordinates[y//100][x//100] == '-':
             moves1.append((x, y))
@@ -378,7 +398,7 @@ def block_check_helper(x, y, piece_symbol, colour, c, d, e):
         for (i, j) in moves2:
             if c.upper() in ['R', 'B', 'Q']:
                 if coordinates[y // 100][x // 100] != coordinates[e//100][d//100]: #not capturing checking piece directly
-                    if coordinates[j//100][i//100].upper() == 'K' or coordinates[j//100][i//100] == piece_symbol:
+                    if coordinates[j//100][i//100].upper() == 'K': #or coordinates[j//100][i//100] == piece_symbol:
                         if i < x and j < y and x < d and y < e:
                             moves1.append((x, y))
                         elif i > x and j > y and x > d and y > e:
@@ -404,7 +424,19 @@ def block_check(x, y, piece, colour, piece_symbol):
     moves1 = []
     c, d, e = 0, 0, 0
     if not isinstance(check_piece_symbol, int):
-        c, d, e = check_piece_symbol, check_x, check_y
+        if len(coords_of_two_checking_pieces) >= 1:
+            if (check_x, check_y) != coords_of_two_checking_pieces[0] and check_piece_symbol != coordinates[coords_of_two_checking_pieces[0][1]//100][coords_of_two_checking_pieces[0][0]//100]:
+                c, d, e = check_piece_symbol, coords_of_two_checking_pieces[0][0], coords_of_two_checking_pieces[0][1]
+        if colour == 'w' and coordinates[check_y//100][check_x//100].isupper() and len(coords_of_actual_b_potential_checking_piece) >= 1:
+            c, d, e = coordinates[coords_of_actual_b_potential_checking_piece[0][1]//100][coords_of_actual_b_potential_checking_piece[0][0]//100], coords_of_actual_b_potential_checking_piece[0][0], coords_of_actual_b_potential_checking_piece[0][1]
+        elif colour == 'b' and coordinates[check_y//100][check_x//100].islower() and len(coords_of_actual_w_potential_checking_piece) >= 1:
+            c, d, e = coordinates[coords_of_actual_w_potential_checking_piece[0][1]//100][coords_of_actual_w_potential_checking_piece[0][0]//100], coords_of_actual_w_potential_checking_piece[0][0], coords_of_actual_w_potential_checking_piece[0][1]
+        elif colour == 'w' and coordinates[check_y//100][check_x//100].isupper() or coordinates[check_y//100][check_x//100] == '-' and (check_x, check_y) != (coords_of_two_checking_pieces[0][0], coords_of_two_checking_pieces[0][1]):
+            c, d, e = coordinates[coords_of_two_checking_pieces[0][1]//100][coords_of_two_checking_pieces[0][0]//100], coords_of_two_checking_pieces[0][0], coords_of_two_checking_pieces[0][1]
+        elif colour == 'b' and coordinates[check_y//100][check_x//100].islower() or coordinates[check_y//100][check_x//100] == '-' and (check_x, check_y) != (coords_of_two_checking_pieces[0][0], coords_of_two_checking_pieces[0][1]):
+            c, d, e = coordinates[coords_of_two_checking_pieces[0][1]//100][coords_of_two_checking_pieces[0][0]//100], coords_of_two_checking_pieces[0][0], coords_of_two_checking_pieces[0][1]
+        else:
+            c, d, e = check_piece_symbol, check_x, check_y
         temp_moves1 = block_check_helper(x, y, piece_symbol, colour, c, d, e)
         if len(temp_moves1) >= 1:
             moves1 = temp_moves1
@@ -1364,7 +1396,7 @@ while running:
                                                 white_king_not_moved = False
                                 if len(coords_of_two_checking_pieces) != 2:
                                     check_moves = block_check(x, y, piece, 'w', global_piece_symbol)
-                                    if (x, y) in check_moves:
+                                    if len(check_moves) >= 1 and (x, y) in check_moves and (x, y) in moves:
                                         change_global_check_coords(x, y)
                                         move(fen_index_when_clicked, fen_index_when_released)
                                         turn_rotater()
@@ -1496,7 +1528,7 @@ while running:
                                                 black_king_not_moved = False
                                 if len(coords_of_two_checking_pieces) != 2:
                                     check_moves = block_check(x, y, piece, 'b', global_piece_symbol)
-                                    if (x, y) in check_moves and (x, y) in moves:
+                                    if len(check_moves) >= 1 and (x, y) in check_moves and (x, y) in moves:
                                         change_global_check_coords(x, y)
                                         move(fen_index_when_clicked, fen_index_when_released)
                                         turn_rotater()
